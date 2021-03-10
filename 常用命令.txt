@@ -1,9 +1,0 @@
-nasm boot.asm -o boot.bin
-
-dd if=boot.bin of=dreamux.img bs=512 count=1 conv=notrunc
-
-bochs -f ./bochsrc
-
-mount /dev/loop0 dreamux.img
-
-mount /dev/loop0 /media/
