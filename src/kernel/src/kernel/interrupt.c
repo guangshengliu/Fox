@@ -60,7 +60,7 @@ __asm__ (	SYMBOL_NAME_STR(IRQ)#nr"_interrupt:		\n\t"	\
 
 
 /*
-*	声明24个中断处理函数的入口代码片段
+
 */
 
 Build_IRQ(0x20)
@@ -89,7 +89,7 @@ Build_IRQ(0x36)
 Build_IRQ(0x37)
 
 /*
-*	函数指针数组，数组的每一个元素指向由宏函数Build_IRQ定义的一个中断处理函数入口
+
 */
 
 void (* interrupt[24])(void)=
@@ -120,10 +120,6 @@ void (* interrupt[24])(void)=
 	IRQ0x37_interrupt,
 };
 
-/*
-*	初始化主/从8259A中断控制器和中断描述符表IDT内的各门描述符
-*/
-
 void init_interrupt()
 {
 	int i;
@@ -133,7 +129,7 @@ void init_interrupt()
 	}
 
 	color_printk(RED,BLACK,"8259A init \n");
-	// 主/从8259A中断控制器初始化赋值
+
 	//8259A-master	ICW1-4
 	io_out8(0x20,0x11);
 	io_out8(0x21,0x20);
@@ -147,23 +143,19 @@ void init_interrupt()
 	io_out8(0xa1,0x01);
 
 	//8259A-M/S	OCW1
-	io_out8(0x21,0xfd);
-	io_out8(0xa1,0xff);
+	io_out8(0x21,0x00);
+	io_out8(0xa1,0x00);
 
 	sti();
 }
 
 /*
-*	显示当前中断请求的中断向量号
+
 */
 
 void do_IRQ(unsigned long regs,unsigned long nr)	//regs:rsp,nr
 {
-	unsigned char x;
 	color_printk(RED,BLACK,"do_IRQ:%#08x\t",nr);
-	// 从I/O端口地址60h处读取出键盘扫描码
-	x = io_in8(0x60);
-	color_printk(RED,BLACK,"key code:%#08x\n",x);
 	io_out8(0x20,0x20);
 }
 

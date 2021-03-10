@@ -333,7 +333,7 @@ static inline unsigned long bit_clean(unsigned long * addr,unsigned long nr)
 }
 
 /*
-* 对IN8位汇编指令的封装
+
 */
 
 static inline unsigned char io_in8(unsigned short port)
@@ -348,7 +348,7 @@ static inline unsigned char io_in8(unsigned short port)
 }
 
 /*
-* 对IN32位汇编指令的封装
+
 */
 
 static inline unsigned int io_in32(unsigned short port)
@@ -363,7 +363,7 @@ static inline unsigned int io_in32(unsigned short port)
 }
 
 /*
-* 对OUT8位汇编指令的封装
+
 */
 
 static inline void io_out8(unsigned short port,unsigned char value)
@@ -376,7 +376,7 @@ static inline void io_out8(unsigned short port,unsigned char value)
 }
 
 /*
-* 对OUT32位汇编指令的封装
+
 */
 
 static inline void io_out32(unsigned short port,unsigned int value)

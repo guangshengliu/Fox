@@ -3,8 +3,6 @@
 #include "gate.h"
 #include "trap.h"
 #include "memory.h"
-#include "interrupt.h"
-#include "task.h"
 
 /*
 		static var 
@@ -62,7 +60,6 @@ void Start_Kernel(void)
 	color_printk(RED,BLACK,"memory init \n");
 	init_memory();
 
-	/*	分配64页内存
 	color_printk(RED,BLACK,"memory_management_struct.bits_map:%#018lx\n",*memory_management_struct.bits_map);
 	color_printk(RED,BLACK,"memory_management_struct.bits_map:%#018lx\n",*(memory_management_struct.bits_map + 1));
 
@@ -77,13 +74,6 @@ void Start_Kernel(void)
 
 	color_printk(RED,BLACK,"memory_management_struct.bits_map:%#018lx\n",*memory_management_struct.bits_map);
 	color_printk(RED,BLACK,"memory_management_struct.bits_map:%#018lx\n",*(memory_management_struct.bits_map + 1));
-	*/
-
-	color_printk(RED,BLACK,"interrupt init \n");
-	init_interrupt();
-
-	color_printk(RED,BLACK,"task_init \n");
-	task_init();
 
 	while(1)
 		;

@@ -77,11 +77,17 @@ gedit id_rsa.pub
 
 接着访问项目所在网页，点击SHH公钥，标题栏可以随意输入，公钥栏把你刚才复制的内容粘贴进去就OK了。
 
+```
+# 测试连通性
+ssh -T git@git.oschina.net
+```
+
+
+
 接下来进行文件上传
 
 ```
-# 从远端复制
-git clone git@github.com:guangshengliu/Dreamux.git
+cd /Dreamux
 # 仓库初始化
 git init
 # 添加文件
@@ -92,7 +98,6 @@ git commit -m "注释语句"
 git remote add origin git@github.com:guangshengliu/Dreamux.git
 # 配置错误时更改源仓库
 git remote rm origin
-# push内容
 git push -u origin master
 ```
 
