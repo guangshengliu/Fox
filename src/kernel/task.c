@@ -4,6 +4,7 @@
 #include "lib.h"
 #include "memory.h"
 #include "linkage.h"
+#include "gate.h"
 
 unsigned long init(unsigned long arg)
 {
@@ -12,7 +13,9 @@ unsigned long init(unsigned long arg)
 	return 1;
 }
 
-
+/*
+*	创建进程控制结构体并完成进程运行前的初始化工作
+*/
 
 unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned long stack_start, unsigned long stack_size)
 {
@@ -21,11 +24,11 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 	struct Page *p = NULL;
 	
 	color_printk(WHITE,BLACK,"alloc_pages,bitmap:%#018lx\n",*memory_management_struct.bits_map);
-
+	// 分配一页物理内存
 	p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped | PG_Active | PG_Kernel);
 
 	color_printk(WHITE,BLACK,"alloc_pages,bitmap:%#018lx\n",*memory_management_struct.bits_map);
-
+	// 初始化task_struct
 	tsk = (struct task_struct *)Phy_To_Virt(p->PHY_address);
 	color_printk(WHITE,BLACK,"struct task_struct address:%#018lx\n",(unsigned long)tsk);
 
@@ -33,19 +36,22 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 	*tsk = *current;
 
 	list_init(&tsk->list);
+	// 链接入进程队列
 	list_add_to_before(&init_task_union.task.list,&tsk->list);	
 	tsk->pid++;	
 	tsk->state = TASK_UNINTERRUPTIBLE;
-
+	// 初始化thread_struct
 	thd = (struct thread_struct *)(tsk + 1);
 	tsk->thread = thd;	
-
+	// 制造进程执行现场
 	memcpy(regs,(void *)((unsigned long)tsk + STACK_SIZE - sizeof(struct pt_regs)),sizeof(struct pt_regs));
 
 	thd->rsp0 = (unsigned long)tsk + STACK_SIZE;
 	thd->rip = regs->rip;
 	thd->rsp = (unsigned long)tsk + STACK_SIZE - sizeof(struct pt_regs);
-
+	// 判断目标进程PF_KTHREAD标志位
+	// PF_KTHREAD=1则该进程运行于应用层
+	// 程序入口地址设置在ret_from_intr地址处，否则设置在kernel_thread_func地址处
 	if(!(tsk->flags & PF_KTHREAD))
 		thd->rip = regs->rip = (unsigned long)ret_from_intr;
 
@@ -54,13 +60,19 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 	return 0;
 }
 
-
+/*
+*	释放进程控制块
+*/
 
 unsigned long do_exit(unsigned long code)
 {
 	color_printk(RED,BLACK,"exit task is running,arg:%#018lx\n",code);
 	while(1);
 }
+
+/*
+*	负责还原进程执行现场，运行进程以及退出进程
+*/
 
 extern void kernel_thread_func(void);
 __asm__ (
@@ -92,14 +104,17 @@ __asm__ (
 "	callq	do_exit		\n\t"
 );
 
-
+/*
+*	操作系统创建进程函数
+*/
 
 int kernel_thread(unsigned long (* fn)(unsigned long), unsigned long arg, unsigned long flags)
 {
 	struct pt_regs regs;
 	memset(&regs,0,sizeof(regs));
-
+	// RBX寄存器保存程序入口地址
 	regs.rbx = (unsigned long)fn;
+	// RDX寄存器保存进程创建者传入的参数
 	regs.rdx = (unsigned long)arg;
 
 	regs.ds = KERNEL_DS;
@@ -107,23 +122,26 @@ int kernel_thread(unsigned long (* fn)(unsigned long), unsigned long arg, unsign
 	regs.cs = KERNEL_CS;
 	regs.ss = KERNEL_DS;
 	regs.rflags = (1 << 9);
+	// RIP寄存器保存着一段引导程序
 	regs.rip = (unsigned long)kernel_thread_func;
 
 	return do_fork(&regs,flags,0,0);
 }
 
+/*
+*	切换进程函数
+*/
 
-
-inline void __switch_to(struct task_struct *prev,struct task_struct *next)
+extern inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 {
-
+	// 获取next进程的内核层栈基地址
 	init_tss[0].rsp0 = next->thread->rsp0;
-
+	// 将上述地址设置到TSS结构体对应的成员变量中
 	set_tss64(init_tss[0].rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
-
+	// 保存FS与GS段寄存器
 	__asm__ __volatile__("movq	%%fs,	%0 \n\t":"=a"(prev->thread->fs));
 	__asm__ __volatile__("movq	%%gs,	%0 \n\t":"=a"(prev->thread->gs));
-
+	// 将next进程保护的FS与GS段寄存器值还原
 	__asm__ __volatile__("movq	%0,	%%fs \n\t"::"a"(next->thread->fs));
 	__asm__ __volatile__("movq	%0,	%%gs \n\t"::"a"(next->thread->gs));
 
@@ -132,7 +150,8 @@ inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 }
 
 /*
-
+*	补全系统第一个进程控制结构体中未赋值的成员变量
+*	设置内核层栈基地址
 */
 
 void task_init()
@@ -161,13 +180,13 @@ void task_init()
 	init_tss[0].rsp0 = init_thread.rsp0;
 
 	list_init(&init_task_union.task.list);
-
+	// 创建第二个进程，名为init
 	kernel_thread(init,10,CLONE_FS | CLONE_FILES | CLONE_SIGNAL);
-
+	// init切换成运行态
 	init_task_union.task.state = TASK_RUNNING;
-
+	// 获取init内核线程的进程控制结构体
 	p = container_of(list_next(&current->list),struct task_struct,list);
-
+	// 切换进程
 	switch_to(current,p);
 }
 

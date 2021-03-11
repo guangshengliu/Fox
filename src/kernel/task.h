@@ -44,38 +44,38 @@ extern void ret_from_intr();
 #define	TASK_STOPPED		(1 << 4)
 
 /*
-
+*	内存空间分布结构体
 */
 
 
 struct mm_struct
 {
-	pml4t_t *pgd;	//page table point
+	pml4t_t *pgd;	//	内存页表指针，保持在CR3
 	
-	unsigned long start_code,end_code;
-	unsigned long start_data,end_data;
-	unsigned long start_rodata,end_rodata;
-	unsigned long start_brk,end_brk;
-	unsigned long start_stack;	
+	unsigned long start_code,end_code;		// 代码段空间
+	unsigned long start_data,end_data;		// 数据段空间
+	unsigned long start_rodata,end_rodata;	// 只读数据段空间
+	unsigned long start_brk,end_brk;		// 动态内存分配区(堆区域)
+	unsigned long start_stack;				// 应用层栈基地址
 };
 
 /*
-
+*	进程切换时状态信息
 */
 
 struct thread_struct
 {
-	unsigned long rsp0;	//in tss
+	unsigned long rsp0;			// 内核层栈基地址
 
-	unsigned long rip;
-	unsigned long rsp;	
+	unsigned long rip;			// 内核层代码指针
+	unsigned long rsp;			// 内核层当前栈指针
 
-	unsigned long fs;
-	unsigned long gs;
+	unsigned long fs;			// FS段寄存器
+	unsigned long gs;			// GS段寄存器
 
-	unsigned long cr2;
-	unsigned long trap_nr;
-	unsigned long error_code;
+	unsigned long cr2;			// CR2控制寄存器
+	unsigned long trap_nr;		// 产生异常的异常号
+	unsigned long error_code;	// 异常的错误码
 };
 
 /*
@@ -105,6 +105,10 @@ struct task_struct
 	long priority;	// 进程优先级
 };
 
+/*
+*	进程控制结构体与进程的内核层栈空间共用空间
+*/
+
 union task_union
 {
 	struct task_struct task;
@@ -127,6 +131,7 @@ struct thread_struct init_thread;
 	.priority = 0		\
 }
 
+// 将全局变量链接到kernel.lds中
 union task_union init_task_union __attribute__((__section__ (".data.init_task"))) = {INIT_TASK(init_task_union.task)};
 
 struct task_struct *init_task[NR_CPUS] = {&init_task_union.task,0};
@@ -145,7 +150,7 @@ struct thread_struct init_thread =
 };
 
 /*
-
+*	IA-32e模式下的TSS结构
 */
 
 struct tss_struct
@@ -167,6 +172,7 @@ struct tss_struct
 	unsigned short iomapbaseaddr;
 }__attribute__((packed));
 
+// INIT_TSS初始化宏
 #define INIT_TSS \
 {	.reserved0 = 0,	 \
 	.rsp0 = (unsigned long)(init_task_union.stack + STACK_SIZE / sizeof(unsigned long)),	\
@@ -188,13 +194,13 @@ struct tss_struct
 struct tss_struct init_tss[NR_CPUS] = { [0 ... NR_CPUS-1] = INIT_TSS };
 
 /*
-
+*	得到当前进程struct task_struct结构体的基地址
 */
 
-
-inline	struct task_struct * get_current()
+static inline struct task_struct * get_current()
 {
 	struct task_struct * current = NULL;
+	// 将数值32767取反，再将所得结果与栈指针寄存器RSP的值执行逻辑与计算
 	__asm__ __volatile__ ("andq %%rsp,%0	\n\t":"=r"(current):"0"(~32767UL));
 	return current;
 }
@@ -206,7 +212,10 @@ inline	struct task_struct * get_current()
 	"andq	$-32768,%rbx	\n\t"
 
 /*
-
+*	prev进程通过调用switch_to模块来保存RSP寄存器的当前值
+*	指定切换回prev进程时的RIP寄存器值，默认为1：处
+*	将next进程的栈指针恢复到RSP寄存器中，再把next进程执行现场的RIP寄存器值压入next进程的内核层栈空间
+*	借助JMP指令执行_switch_to函数
 */
 
 

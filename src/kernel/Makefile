@@ -28,7 +28,7 @@ interrupt.o: interrupt.c
 	gcc  -mcmodel=large -fno-builtin -m64 -c interrupt.c
 
 task.o: task.c
-	gcc  -mcmodel=large -fno-builtin -m64 -c task.c	
+	gcc  -mcmodel=large -fno-builtin -m64 -c task.c	-fno-stack-protector
 
 clean:
 	rm -rf *.o *.s~ *.s *.S~ *.c~ *.h~ system  Makefile~ Kernel.lds~ kernel.bin 

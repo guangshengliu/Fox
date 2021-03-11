@@ -211,7 +211,7 @@ void do_stack_segment_fault(unsigned long rsp,unsigned long error_code)
 }
 
 /*
-* 通用保护性异常处理函数(#GP)：错误	任何内存引用和保护检测
+* 通用保护性异常处理函数(#do_general_protection)：错误	任何内存引用和保护检测
 */
 
 void do_general_protection(unsigned long rsp,unsigned long error_code)

@@ -39,9 +39,6 @@ void Start_Kernel(void)
 	// 缓冲区长度
 	Pos.FB_length = (Pos.XResolution * Pos.YResolution * 4 + PAGE_4K_SIZE - 1) & PAGE_4K_MASK;
 
-	// 以黄色字体，黑色背景显示字符串
-	color_printk(YELLOW,BLACK,"Hello\t\t World!\n");
-
 	load_TR(8);
 
 	set_tss64(0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
@@ -83,7 +80,7 @@ void Start_Kernel(void)
 	init_interrupt();
 
 	color_printk(RED,BLACK,"task_init \n");
-	task_init();
+	//task_init();
 
 	while(1)
 		;

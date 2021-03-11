@@ -3,7 +3,7 @@
 #define __PTRACE_H__
 
 /*
-
+*	处理程序入口处保存程序执行现场
 */
 
 struct pt_regs

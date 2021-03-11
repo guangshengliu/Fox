@@ -4,6 +4,8 @@
 
 #define NULL 0
 
+// 根据结构体变量内的某个成员变量基地址，准确计算出结构体变量的基地址
+// 反向推倒出父层结构的起始地址
 #define container_of(ptr,type,member)							\
 ({											\
 	typeof(((type *)0)->member) * p = (ptr);					\
@@ -23,12 +25,14 @@ struct List
 	struct List * next;
 };
 
+// 链表初始化
 static inline void list_init(struct List * list)
 {
 	list->prev = list;
 	list->next = list;
 }
 
+// 在链表前插入元素
 static inline void list_add_to_behind(struct List * entry,struct List * new)	////add to entry behind
 {
 	new->next = entry->next;
@@ -37,6 +41,7 @@ static inline void list_add_to_behind(struct List * entry,struct List * new)	///
 	entry->next = new;
 }
 
+// 在链表后插入元素
 static inline void list_add_to_before(struct List * entry,struct List * new)	////add to entry behind
 {
 	new->next = entry;
@@ -45,12 +50,14 @@ static inline void list_add_to_before(struct List * entry,struct List * new)	///
 	entry->prev = new;
 }
 
+// 链表删除元素
 static inline void list_del(struct List * entry)
 {
 	entry->next->prev = entry->prev;
 	entry->prev->next = entry->next;
 }
 
+// 链表是否为空
 static inline long list_is_empty(struct List * entry)
 {
 	if(entry == entry->next && entry->prev == entry)
@@ -59,6 +66,7 @@ static inline long list_is_empty(struct List * entry)
 		return 0;
 }
 
+// 链表前一个元素
 static inline struct List * list_prev(struct List * entry)
 {
 	if(entry->prev != NULL)
@@ -67,6 +75,7 @@ static inline struct List * list_prev(struct List * entry)
 		return NULL;
 }
 
+// 链表后一个元素
 static inline struct List * list_next(struct List * entry)
 {
 	if(entry->next != NULL)

@@ -1,8 +1,8 @@
+#include "linkage.h"
+
 .section .text
 
-.globl _start
-
-_start:
+ENTRY(_start)
 
 	mov	$0x10,	%ax
 	mov	%ax,	%ds
@@ -48,9 +48,8 @@ entry64:
 	movq	%rax,	%es
 	movq	%rax,	%gs
 	movq	%rax,	%ss
-	movq	$0xffff800000007E00,	%rsp		/* rsp address */
+	movq	_stack_start(%rip),	%rsp		/* rsp address */
 
-// 初始化中断描述符表IDT
 setup_IDT:							
 	leaq	ignore_int(%rip),	%rdx
 	movq	$(0x08 << 16),	%rax
@@ -71,7 +70,6 @@ rp_sidt:
 	dec	%rcx
 	jne	rp_sidt
 
-// 初始化GDT内的任务状态描述符TSS Descriptor
 setup_TSS64:
 	leaq	TSS64_Table(%rip),	%rdx
 	xorq	%rax,	%rax
@@ -93,8 +91,8 @@ setup_TSS64:
 	shrq	$32,	%rdx
 	movq	%rdx,	72(%rdi)
 
-	//mov	$0x40,	%ax
-	//ltr	%ax
+//	mov	$0x40,	%ax
+//	ltr	%ax
 
 	movq	go_to_kernel(%rip),	%rax		/* movq address */
 	pushq	$0x08
@@ -172,6 +170,11 @@ Loop:
 
 int_msg:
 	.asciz "Unknown interrupt or fault at RIP\n"
+
+ENTRY(_stack_start)
+	.quad	init_task_union + 32768
+
+
 
 //=======	init page
 .align 8
