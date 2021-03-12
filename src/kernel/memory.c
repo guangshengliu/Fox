@@ -253,8 +253,8 @@ void init_memory()
 	color_printk(PURPLE,BLACK,"**Global_CR3\t:%#018lx\n",*Phy_To_Virt(*Phy_To_Virt(Global_CR3) & (~0xff)) & (~0xff));
 
 	// 将页目录中的前10个页表项清零，消除一致性(TLB与PML4页表)页表映射
-	for(i = 0;i < 10;i++)
-		*(Phy_To_Virt(Global_CR3)  + i) = 0UL;
+	//for(i = 0;i < 10;i++)
+	//	*(Phy_To_Virt(Global_CR3)  + i) = 0UL;
 	
 	flush_tlb();
 }

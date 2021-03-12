@@ -31,8 +31,6 @@ extern char _end;
 
 extern unsigned long _stack_start;
 
-extern void ret_from_intr();
-
 /*
 
 */
@@ -217,7 +215,7 @@ static inline struct task_struct * get_current()
 *	将next进程的栈指针恢复到RSP寄存器中，再把next进程执行现场的RIP寄存器值压入next进程的内核层栈空间
 *	借助JMP指令执行_switch_to函数
 */
-
+void __switch_to(struct task_struct *prev,struct task_struct *next);
 
 #define switch_to(prev,next)			\
 do{							\

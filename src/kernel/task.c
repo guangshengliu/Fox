@@ -6,9 +6,54 @@
 #include "linkage.h"
 #include "gate.h"
 
+extern void ret_system_call(void);
+
+/*
+*	
+*/
+
+void user_level_function()
+{
+	color_printk(RED,BLACK,"user_level_function task is running\n");
+	while(1);
+}
+
+/*
+*	搭建应用程序执行环境
+*/
+
+unsigned long do_execve(struct pt_regs * regs)
+{
+	regs->rdx = 0x800000;	//RIP保存应用程序的入口地址
+	regs->rcx = 0xa00000;	//RSP保存应用程序的应用层栈顶地址
+	regs->rax = 1;	
+	regs->ds = 0;
+	regs->es = 0;
+	color_printk(RED,BLACK,"do_execve task is running\n");
+	// 将应用层执行函数user_level_function复制到线性地址0x800000处执行
+	memcpy(user_level_function,(void *)0x800000,1024);
+
+	return 0;
+}
+
+/*
+*	将init内核线程转化为应用程序
+*/
+
 unsigned long init(unsigned long arg)
 {
+	struct pt_regs *regs;
+
 	color_printk(RED,BLACK,"init task is running,arg:%#018lx\n",arg);
+
+	current->thread->rip = (unsigned long)ret_system_call;
+	current->thread->rsp = (unsigned long)current + STACK_SIZE - sizeof(struct pt_regs);
+	regs = (struct pt_regs *)current->thread->rsp;
+
+	__asm__	__volatile__	(	"movq	%1,	%%rsp	\n\t"
+					"pushq	%2		\n\t"
+					"jmp	do_execve	\n\t"
+					::"D"(regs),"m"(current->thread->rsp),"m"(current->thread->rip):"memory");
 
 	return 1;
 }
@@ -53,7 +98,7 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 	// PF_KTHREAD=1则该进程运行于应用层
 	// 程序入口地址设置在ret_from_intr地址处，否则设置在kernel_thread_func地址处
 	if(!(tsk->flags & PF_KTHREAD))
-		thd->rip = regs->rip = (unsigned long)ret_from_intr;
+		thd->rip = regs->rip = (unsigned long)ret_system_call;
 
 	tsk->state = TASK_RUNNING;
 
@@ -132,7 +177,7 @@ int kernel_thread(unsigned long (* fn)(unsigned long), unsigned long arg, unsign
 *	切换进程函数
 */
 
-extern inline void __switch_to(struct task_struct *prev,struct task_struct *next)
+inline void __switch_to(struct task_struct *prev,struct task_struct *next)
 {
 	// 获取next进程的内核层栈基地址
 	init_tss[0].rsp0 = next->thread->rsp0;
@@ -173,6 +218,8 @@ void task_init()
 	init_mm.end_brk = memory_management_struct.end_brk;
 
 	init_mm.start_stack = _stack_start;
+
+	wrmsr(0x174,KERNEL_CS);
 
 //	init_thread,init_tss
 	set_tss64(init_thread.rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);

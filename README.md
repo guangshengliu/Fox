@@ -26,7 +26,7 @@ sudo apt-get install nasm
 nasm -version
 ```
 
-Bochs-2.6.9安装
+Bochs-2.6.11安装
 
 ```
 # 下载相关依赖
@@ -34,15 +34,15 @@ sudo apt-get install build-essential
 sudo apt-get install xorg-dev
 sudo apt-get install libgtk2.0-dev
 
-# 下载Bochs-2.6.9
-wget https://nchc.dl.sourceforge.net/project/bochs/bochs/2.6.9/bochs-2.6.9.tar.gz
+# 下载Bochs-2.6.11
+wget https://nchc.dl.sourceforge.net/project/bochs/bochs/2.6.9/bochs-2.6.11.tar.gz
 # 解压
-tar vxaf bochs-2.6.9.tar.gz
+tar vxaf bochs-2.6.11.tar.gz
 
 # 进入文件目录
-cd bochs-2.6.9
+cd bochs-2.6.11
 # 读取配置文件
-./configure --with-x11 --with-wx --enable-debugger --enable-disasm --enable-all-optimizations --enable-readline --enable-long-phy-address --enable-ltdl-install --enable-idle-hack --enable-plugins --enable-a20-pin --enable-x86-64 --enable-smp --enable-cpu-level=6 --enable-large-ramfile --enable-repeat-speedups --enable-fast-function-calls --enable-handlers-chaining --enable-trace-linking --enable-configurable-msrs --enable-show-ips --enable-debugger-gui --enable-iodebug --enable-logging --enable-assert-checks --enable-fpu --enable-vmx=2 --enable-svm --enable-3dnow --enable-alignment-check --enable-monitor-mwait --enable-avx --enable-evex --enable-x86-debugger --enable-pci --enable-usb --enable-v
+./configure --with-x11 --with-wx --enable-debugger --enable-disasm --enable-all-optimizations --enable-readline --enable-long-phy-address --enable-ltdl-install --enable-idle-hack --enable-plugins --enable-a20-pin --enable-x86-64 --enable-smp --enable-cpu-level=6 --enable-large-ramfile --enable-repeat-speedups --enable-fast-function-calls  --enable-handlers-chaining  --enable-trace-linking --enable-configurable-msrs --enable-show-ips --enable-cpp --enable-debugger-gui --enable-iodebug --enable-logging --enable-assert-checks --enable-fpu --enable-vmx=2 --enable-svm --enable-3dnow --enable-alignment-check  --enable-monitor-mwait --enable-avx  --enable-evex --enable-x86-debugger --enable-pci --enable-usb --enable-voodoo
 # 编译前准备，否则会出错误
 cp misc/bximage.cpp misc/bximage.cc
 cp iodev/hdimage/hdimage.cpp iodev/hdimage/hdimage.cc
@@ -57,6 +57,23 @@ sudo make install
 # 配置文件
 cp .bochsrc bochsrc
 ```
+
+安装问题：In function void bx_dbg_tlb_lookup(bx_lin_address)
+
+在bx_debug/dbg_main.cc中找到下面的定义，修改成：
+
+```
+Bit32u index = BX_ITLB_INDEX_OF(laddr);		//这一行改成下面一行
+Bit32u index = BX_CPU(dbg_cpu)->ITLB.get_index_of(laddr);
+
+sprintf(cpu_param_name, "ITLB.entry%d", index);
+bx_dbg_show_param_command(cpu_param_name, 0);
+
+index = BX_DTLB_INDEX_OF(laddr, 0);		//这一行改成下面一行
+index = BX_CPU(dbg_cpu)->DTLB.get_index_of(laddr);
+```
+
+
 
 ## git配置
 
@@ -182,16 +199,6 @@ umount /media/
 sudo losetup -d /dev/loop0
 bochs -f bochsrc
 ```
-
-关于bochs 2.6.9 下 "dlopen failed for module 'usb_uhci' (libbx_usb_uhci.so): file not found"问题的处理
-
-```
-svn checkout -r r13534 http://svn.code.sf.net/p/bochs/code/trunk/bochs bochs
-```
-
-重新安装一次（软件自带问题）
-
-安装过程出现错误需要不断进入/bochs执行svn cleanup命令
 
 
 
