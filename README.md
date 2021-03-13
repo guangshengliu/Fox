@@ -200,5 +200,21 @@ sudo losetup -d /dev/loop0
 bochs -f bochsrc
 ```
 
+gcc版本切换
+
+```
+# 50表示优先级
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 50
+# 40表示优先级
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 40
+
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 50 
+
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 40
+# 切换gcc版本
+sudo update-alternatives --config gcc
+sudo update-alternatives --config g++
+```
+
 
 

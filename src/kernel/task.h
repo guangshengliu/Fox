@@ -243,4 +243,33 @@ do{							\
 unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned long stack_start, unsigned long stack_size);
 void task_init();
 
+#define MAX_SYSTEM_CALL_NR 128
+
+typedef unsigned long (* system_call_t)(struct pt_regs * regs);
+
+// 异常处理
+unsigned long no_system_call(struct pt_regs * regs)
+{
+	color_printk(RED,BLACK,"no_system_call is calling,NR:%#04x\n",regs->rax);
+	return -1;
+}
+
+/*
+*	创建系统调用号为1的sys_printf系统调用函数
+*	打印RDI寄存器内的字符串
+*/
+
+unsigned long sys_printf(struct pt_regs * regs)
+{
+	color_printk(BLACK,WHITE,(char *)regs->rdi);
+	return 1;
+}
+
+// system_call_table用于保存每个系统调用的处理函数
+system_call_t system_call_table[MAX_SYSTEM_CALL_NR] = 
+{
+	[0] = no_system_call,
+	[1] = sys_printf,
+	[2 ... MAX_SYSTEM_CALL_NR-1] = no_system_call
+};
 #endif

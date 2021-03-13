@@ -7,14 +7,29 @@
 #include "gate.h"
 
 extern void ret_system_call(void);
+extern void system_call(void);
 
 /*
-*	
+*	内嵌系统调用在应用层部分的核心程序
+*	LEA取得sysexit_return_address的地址，存入RDX寄存器
+*	RCX寄存器保存着应用层的当前栈指针，RAX寄存器是系统调用API的向量号
+*	执行结束后，执行结果保存在变量ret
 */
 
 void user_level_function()
 {
-	color_printk(RED,BLACK,"user_level_function task is running\n");
+	long ret = 0;
+//	color_printk(RED,BLACK,"user_level_function task is running\n");
+	char string[]="Hello World!\n";
+
+	__asm__	__volatile__	(	"leaq	sysexit_return_address(%%rip),	%%rdx	\n\t"
+					"movq	%%rsp,	%%rcx		\n\t"
+					"sysenter			\n\t"
+					"sysexit_return_address:	\n\t"
+					:"=a"(ret):"0"(1),"D"(string):"memory");	
+
+//	color_printk(RED,BLACK,"user_level_function task called sysenter,ret:%ld\n",ret);
+
 	while(1);
 }
 
@@ -113,6 +128,15 @@ unsigned long do_exit(unsigned long code)
 {
 	color_printk(RED,BLACK,"exit task is running,arg:%#018lx\n",code);
 	while(1);
+}
+
+/*
+*	系统调用封装
+*/
+
+unsigned long  system_call_function(struct pt_regs * regs)
+{
+	return system_call_table[regs->rax](regs);
 }
 
 /*
@@ -220,6 +244,8 @@ void task_init()
 	init_mm.start_stack = _stack_start;
 
 	wrmsr(0x174,KERNEL_CS);
+	wrmsr(0x175,current->thread->rsp0);
+	wrmsr(0x176,(unsigned long)system_call);
 
 //	init_thread,init_tss
 	set_tss64(init_thread.rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);

@@ -4,6 +4,7 @@
 #include "printk.h"
 #include "memory.h"
 #include "gate.h"
+#include "ptrace.h"
 
 /*
 *	保存通用寄存器状态
@@ -156,15 +157,13 @@ void init_interrupt()
 /*
 *	显示当前中断请求的中断向量号
 */
-
-void do_IRQ(unsigned long regs,unsigned long nr)	//regs:rsp,nr
+void do_IRQ(struct pt_regs * regs,unsigned long nr)	//regs,nr
 {
 	unsigned char x;
-	color_printk(RED,BLACK,"do_IRQ:%#08x\t",nr);
+	color_printk(RED,BLACK,"do_IRQ:%#018lx\t",nr);
 	// 从I/O端口地址60h处读取出键盘扫描码
 	x = io_in8(0x60);
-	color_printk(RED,BLACK,"key code:%#08x\n",x);
+	color_printk(RED,BLACK,"key code:%#018lx\t",x);
 	io_out8(0x20,0x20);
+	color_printk(RED,BLACK,"regs:%#018lx\t<RIP:%#018lx\tRSP:%#018lx>\n",regs,regs->rip,regs->rsp);
 }
-
-
