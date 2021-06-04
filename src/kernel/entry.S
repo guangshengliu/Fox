@@ -1,333 +1,338 @@
-#include "linkage.h"
+# 1 "entry.S"
+# 1 "<built-in>"
+# 1 "<command-line>"
+# 1 "/usr/include/stdc-predef.h" 1 3 4
+# 1 "<command-line>" 2
+# 1 "entry.S"
+# 1 "linkage.h" 1
+# 2 "entry.S" 2
 
-// 以下符合常量定义各寄存器(程序执行现场)
-// 在栈中的保存顺序(基于栈指针的偏移值)
-// 栈是向下生长的
-R15	=	0x00
-R14	=	0x08
-R13	=	0x10
-R12	=	0x18
-R11	=	0x20
-R10	=	0x28
-R9	=	0x30
-R8	=	0x38
-RBX	=	0x40
-RCX	=	0x48
-RDX	=	0x50
-RSI	=	0x58
-RDI	=	0x60
-RBP	=	0x68
-DS	=	0x70
-ES	=	0x78
-RAX	=	0x80
-FUNC	=	0x88
-ERRCODE	=	0x90
-RIP	=	0x98
-CS	=	0xa0
-RFLAGS	=	0xa8
-OLDRSP	=	0xb0
-OLDSS	=	0xb8
 
-// 异常处理返回模块，还原被中断程序的执行现场
+
+
+R15 = 0x00
+R14 = 0x08
+R13 = 0x10
+R12 = 0x18
+R11 = 0x20
+R10 = 0x28
+R9 = 0x30
+R8 = 0x38
+RBX = 0x40
+RCX = 0x48
+RDX = 0x50
+RSI = 0x58
+RDI = 0x60
+RBP = 0x68
+DS = 0x70
+ES = 0x78
+RAX = 0x80
+FUNC = 0x88
+ERRCODE = 0x90
+RIP = 0x98
+CS = 0xa0
+RFLAGS = 0xa8
+OLDRSP = 0xb0
+OLDSS = 0xb8
+
+
 RESTORE_ALL:
-	popq	%r15;		
-	popq	%r14;		
-	popq	%r13;		
-	popq	%r12;		
-	popq	%r11;		
-	popq	%r10;		
-	popq	%r9;		
-	popq	%r8;		
-	popq	%rbx;		
-	popq	%rcx;		
-	popq	%rdx;		
-	popq	%rsi;		
-	popq	%rdi;		
-	popq	%rbp;		
-	popq	%rax;		
-	movq	%rax,	%ds;	
-	popq	%rax;		
-	movq	%rax,	%es;	
-	popq	%rax;		
-	addq	$0x10,	%rsp;	
-	iretq;
+ popq %r15;
+ popq %r14;
+ popq %r13;
+ popq %r12;
+ popq %r11;
+ popq %r10;
+ popq %r9;
+ popq %r8;
+ popq %rbx;
+ popq %rcx;
+ popq %rdx;
+ popq %rsi;
+ popq %rdi;
+ popq %rbp;
+ popq %rax;
+ movq %rax, %ds;
+ popq %rax;
+ movq %rax, %es;
+ popq %rax;
+ addq $0x10, %rsp;
+ iretq;
 
-#define GET_CURRENT(reg)	\
-	movq	$-32768,reg;	\
-	andq	%rsp,	reg
+
+
+
 
 ret_from_exception:
-	/*GET_CURRENT(%ebx)	need rewrite*/
-ENTRY(ret_from_intr)
-	jmp	RESTORE_ALL	/*need rewrite*/
 
-// 系统调用API的接口模块
-ENTRY(system_call)
-	sti
-	subq	$0x38,	%rsp			 
-	cld;					 
+.global ret_from_intr; ret_from_intr:
+ jmp RESTORE_ALL
 
-	pushq	%rax;				 	
-	movq	%es,	%rax;			 	
-	pushq	%rax;				 	
-	movq	%ds,	%rax;			 	
-	pushq	%rax;				 	
-	xorq	%rax,	%rax;			 	
-	pushq	%rbp;				 	
-	pushq	%rdi;				 	
-	pushq	%rsi;				 	
-	pushq	%rdx;				 	
-	pushq	%rcx;				 
-	pushq	%rbx;				 	
-	pushq	%r8;				 	
-	pushq	%r9;				 	
-	pushq	%r10;				 
-	pushq	%r11;				 
-	pushq	%r12;				 	
-	pushq	%r13;				 
-	pushq	%r14;				 	
-	pushq	%r15;				 	
-	movq	$0x10,	%rdx;			 	
-	movq	%rdx,	%ds;			 	
-	movq	%rdx,	%es;			 
-	movq	%rsp,	%rdi			 	
-			
-	callq	system_call_function		 	////////
 
-// 系统调用后恢复应用程序的执行环境
-ENTRY(ret_system_call)						
-	movq	%rax,	0x80(%rsp)		 
-	popq	%r15				 
-	popq	%r14				 	
-	popq	%r13				 	
-	popq	%r12				 	
-	popq	%r11				 	
-	popq	%r10				 	
-	popq	%r9				 	
-	popq	%r8				 	
-	popq	%rbx				 	
-	popq	%rcx				 	
-	popq	%rdx				 	
-	popq	%rsi				 	
-	popq	%rdi				 	
-	popq	%rbp				 	
-	popq	%rax				 	
-	movq	%rax,	%ds			 
-	popq	%rax				 
-	movq	%rax,	%es			 
-	popq	%rax				 
-	addq	$0x38,	%rsp	
-	.byte	0x48		 
-	sysexit
+.global system_call; system_call:
+ sti
+ subq $0x38, %rsp
+ cld;
 
-// 除法异常处理模块
-ENTRY(divide_error)
-	pushq	$0
-	pushq	%rax
-	leaq	do_divide_error(%rip),	%rax
-	xchgq	%rax,	(%rsp)		// RAX寄存器与栈中的值交互
+ pushq %rax;
+ movq %es, %rax;
+ pushq %rax;
+ movq %ds, %rax;
+ pushq %rax;
+ xorq %rax, %rax;
+ pushq %rbp;
+ pushq %rdi;
+ pushq %rsi;
+ pushq %rdx;
+ pushq %rcx;
+ pushq %rbx;
+ pushq %r8;
+ pushq %r9;
+ pushq %r10;
+ pushq %r11;
+ pushq %r12;
+ pushq %r13;
+ pushq %r14;
+ pushq %r15;
+ movq $0x10, %rdx;
+ movq %rdx, %ds;
+ movq %rdx, %es;
+ movq %rsp, %rdi
 
-// 按照上述寄存器的弹出顺序，反向将各寄存器数压入栈中
+ callq system_call_function
+
+
+.global ret_system_call; ret_system_call:
+ movq %rax, 0x80(%rsp)
+ popq %r15
+ popq %r14
+ popq %r13
+ popq %r12
+ popq %r11
+ popq %r10
+ popq %r9
+ popq %r8
+ popq %rbx
+ popq %rcx
+ popq %rdx
+ popq %rsi
+ popq %rdi
+ popq %rbp
+ popq %rax
+ movq %rax, %ds
+ popq %rax
+ movq %rax, %es
+ popq %rax
+ addq $0x38, %rsp
+ .byte 0x48
+ sysexit
+
+
+.global divide_error; divide_error:
+ pushq $0
+ pushq %rax
+ leaq do_divide_error(%rip), %rax
+ xchgq %rax, (%rsp)
+
+
 error_code:
-	pushq	%rax
-	movq	%es,	%rax
-	pushq	%rax
-	movq	%ds,	%rax
-	pushq	%rax
-	xorq	%rax,	%rax
+ pushq %rax
+ movq %es, %rax
+ pushq %rax
+ movq %ds, %rax
+ pushq %rax
+ xorq %rax, %rax
 
-	pushq	%rbp
-	pushq	%rdi
-	pushq	%rsi
-	pushq	%rdx
-	pushq	%rcx
-	pushq	%rbx
-	pushq	%r8
-	pushq	%r9
-	pushq	%r10
-	pushq	%r11
-	pushq	%r12
-	pushq	%r13
-	pushq	%r14
-	pushq	%r15	
-	
-	cld
-	movq	ERRCODE(%rsp),	%rsi
-	movq	FUNC(%rsp),	%rdx	
-	// 从应用层跳转到内核层
-	// DS和ES寄存器重新加载数据
-	movq	$0x10,	%rdi
-	movq	%rdi,	%ds
-	movq	%rdi,	%es
+ pushq %rbp
+ pushq %rdi
+ pushq %rsi
+ pushq %rdx
+ pushq %rcx
+ pushq %rbx
+ pushq %r8
+ pushq %r9
+ pushq %r10
+ pushq %r11
+ pushq %r12
+ pushq %r13
+ pushq %r14
+ pushq %r15
 
-	// 将异常处理函数的起始地址装入RDX寄存器
-	movq	%rsp,	%rdi
-	////GET_CURRENT(%ebx)
-
-	callq 	*%rdx
-
-	jmp	ret_from_exception	
-
-// 调试模块
-ENTRY(debug)
-	pushq	$0
-	pushq	%rax
-	leaq	do_debug(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-// NMI不可屏蔽中断(外部中断)
-ENTRY(nmi)
-	pushq	%rax
-	cld;			
-	pushq	%rax;	
-	
-	pushq	%rax
-	movq	%es,	%rax
-	pushq	%rax
-	movq	%ds,	%rax
-	pushq	%rax
-	xorq	%rax,	%rax
-	
-	pushq	%rbp;		
-	pushq	%rdi;		
-	pushq	%rsi;		
-	pushq	%rdx;		
-	pushq	%rcx;		
-	pushq	%rbx;		
-	pushq	%r8;		
-	pushq	%r9;		
-	pushq	%r10;		
-	pushq	%r11;		
-	pushq	%r12;		
-	pushq	%r13;		
-	pushq	%r14;		
-	pushq	%r15;
-	
-	movq	$0x10,	%rdx;	
-	movq	%rdx,	%ds;	
-	movq	%rdx,	%es;
-	
-	movq	$0,	%rsi
-	movq	%rsp,	%rdi
-
-	callq	do_nmi
-
-	jmp	RESTORE_ALL
-
-ENTRY(int3)
-	pushq	$0
-	pushq	%rax
-	leaq	do_int3(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(overflow)
-	pushq	$0
-	pushq	%rax
-	leaq	do_overflow(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(bounds)
-	pushq	$0
-	pushq	%rax
-	leaq	do_bounds(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(undefined_opcode)
-	pushq	$0
-	pushq	%rax
-	leaq	do_undefined_opcode(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(dev_not_available)	/* need rewrite */
-	pushq	$0
-	pushq	%rax
-	leaq	do_dev_not_available(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
+ cld
+ movq ERRCODE(%rsp), %rsi
+ movq FUNC(%rsp), %rdx
 
 
-ENTRY(double_fault)
-	pushq	%rax
-	leaq	do_double_fault(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(coprocessor_segment_overrun)
-	pushq	$0
-	pushq	%rax
-	leaq	do_coprocessor_segment_overrun(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-// 无效TSS异常处理模块
-ENTRY(invalid_TSS)
-	pushq	%rax
-	leaq	do_invalid_TSS(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(segment_not_present)
-	pushq	%rax
-	leaq	do_segment_not_present(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(stack_segment_fault)
-	pushq	%rax
-	leaq	do_stack_segment_fault(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(general_protection)
-	pushq	%rax
-	leaq	do_general_protection(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-// 页面错误模块
-ENTRY(page_fault)
-	pushq	%rax
-	leaq	do_page_fault(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(x87_FPU_error)
-	pushq	$0
-	pushq	%rax
-	leaq	do_x87_FPU_error(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(alignment_check)
-	pushq	%rax
-	leaq	do_alignment_check(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(machine_check)
-	pushq	$0
-	pushq	%rax
-	leaq	do_machine_check(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(SIMD_exception)
-	pushq	$0
-	pushq	%rax
-	leaq	do_SIMD_exception(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
-
-ENTRY(virtualization_exception)
-	pushq	$0
-	pushq	%rax
-	leaq	do_virtualization_exception(%rip),	%rax
-	xchgq	%rax,	(%rsp)
-	jmp	error_code
+ movq $0x10, %rdi
+ movq %rdi, %ds
+ movq %rdi, %es
 
 
+ movq %rsp, %rdi
+
+
+ callq *%rdx
+
+ jmp ret_from_exception
+
+
+.global debug; debug:
+ pushq $0
+ pushq %rax
+ leaq do_debug(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+
+.global nmi; nmi:
+ pushq %rax
+ cld;
+ pushq %rax;
+
+ pushq %rax
+ movq %es, %rax
+ pushq %rax
+ movq %ds, %rax
+ pushq %rax
+ xorq %rax, %rax
+
+ pushq %rbp;
+ pushq %rdi;
+ pushq %rsi;
+ pushq %rdx;
+ pushq %rcx;
+ pushq %rbx;
+ pushq %r8;
+ pushq %r9;
+ pushq %r10;
+ pushq %r11;
+ pushq %r12;
+ pushq %r13;
+ pushq %r14;
+ pushq %r15;
+
+ movq $0x10, %rdx;
+ movq %rdx, %ds;
+ movq %rdx, %es;
+
+ movq $0, %rsi
+ movq %rsp, %rdi
+
+ callq do_nmi
+
+ jmp RESTORE_ALL
+
+.global int3; int3:
+ pushq $0
+ pushq %rax
+ leaq do_int3(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global overflow; overflow:
+ pushq $0
+ pushq %rax
+ leaq do_overflow(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global bounds; bounds:
+ pushq $0
+ pushq %rax
+ leaq do_bounds(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global undefined_opcode; undefined_opcode:
+ pushq $0
+ pushq %rax
+ leaq do_undefined_opcode(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global dev_not_available; dev_not_available:
+ pushq $0
+ pushq %rax
+ leaq do_dev_not_available(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+
+.global double_fault; double_fault:
+ pushq %rax
+ leaq do_double_fault(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global coprocessor_segment_overrun; coprocessor_segment_overrun:
+ pushq $0
+ pushq %rax
+ leaq do_coprocessor_segment_overrun(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+
+.global invalid_TSS; invalid_TSS:
+ pushq %rax
+ leaq do_invalid_TSS(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global segment_not_present; segment_not_present:
+ pushq %rax
+ leaq do_segment_not_present(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global stack_segment_fault; stack_segment_fault:
+ pushq %rax
+ leaq do_stack_segment_fault(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global general_protection; general_protection:
+ pushq %rax
+ leaq do_general_protection(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+
+.global page_fault; page_fault:
+ pushq %rax
+ leaq do_page_fault(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global x87_FPU_error; x87_FPU_error:
+ pushq $0
+ pushq %rax
+ leaq do_x87_FPU_error(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global alignment_check; alignment_check:
+ pushq %rax
+ leaq do_alignment_check(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global machine_check; machine_check:
+ pushq $0
+ pushq %rax
+ leaq do_machine_check(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global SIMD_exception; SIMD_exception:
+ pushq $0
+ pushq %rax
+ leaq do_SIMD_exception(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
+
+.global virtualization_exception; virtualization_exception:
+ pushq $0
+ pushq %rax
+ leaq do_virtualization_exception(%rip), %rax
+ xchgq %rax, (%rsp)
+ jmp error_code
