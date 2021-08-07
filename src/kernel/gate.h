@@ -65,7 +65,7 @@ do{									\
 
 static inline void set_intr_gate(unsigned int n,unsigned char ist,void * addr)
 {
-	_set_gate(IDT_Table + n , 0x8E , ist , addr);	//P,DPL=0,TYPE=E
+	_set_gate(IDT_Table + n , 0x8E , ist , addr);	//P=1,DPL=0,TYPE=E
 }
 
 /*
@@ -74,7 +74,7 @@ static inline void set_intr_gate(unsigned int n,unsigned char ist,void * addr)
 
 static inline void set_trap_gate(unsigned int n,unsigned char ist,void * addr)
 {
-	_set_gate(IDT_Table + n , 0x8F , ist , addr);	//P,DPL=0,TYPE=F
+	_set_gate(IDT_Table + n , 0x8F , ist , addr);	//P=1,DPL=0,TYPE=F
 }
 
 /*
@@ -83,7 +83,7 @@ static inline void set_trap_gate(unsigned int n,unsigned char ist,void * addr)
 
 static inline void set_system_gate(unsigned int n,unsigned char ist,void * addr)
 {
-	_set_gate(IDT_Table + n , 0xEF , ist , addr);	//P,DPL=3,TYPE=F
+	_set_gate(IDT_Table + n , 0xEF , ist , addr);	//P=1,DPL=3,TYPE=F
 }
 
 /*
@@ -92,7 +92,7 @@ static inline void set_system_gate(unsigned int n,unsigned char ist,void * addr)
 
 static inline void set_system_intr_gate(unsigned int n,unsigned char ist,void * addr)	//int3
 {
-	_set_gate(IDT_Table + n , 0xEE , ist , addr);	//P,DPL=3,TYPE=E
+	_set_gate(IDT_Table + n , 0xEE , ist , addr);	//P=1,DPL=3,TYPE=E
 }
 
 
