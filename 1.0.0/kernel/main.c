@@ -19,8 +19,12 @@ void Start_Kernel(void)
 	int *addr = (int *)0xffff800003000000;
 	int i;
 	memset((void *)&_bss, 0, (unsigned long)&_ebss - (unsigned long)&_bss);
-
-	Pos.XResolution = boot_para_info->Graphics_Info.HorizontalResolution;
+	// 此处大坑，分辨率为1366时不能被4整除，需要和scanline保持一致
+	// 行业规范，具体原因不清楚
+	if(boot_para_info->Graphics_Info.HorizontalResolution == 1366)
+		Pos.XResolution = boot_para_info->Graphics_Info.PixelsPerScanLine;
+	else
+		Pos.XResolution = boot_para_info->Graphics_Info.HorizontalResolution;
 	Pos.YResolution = boot_para_info->Graphics_Info.VerticalResolution;
 
 	Pos.FB_addr = (int *)0xffff800003000000;
@@ -37,39 +41,16 @@ void Start_Kernel(void)
 	memory_management_struct.end_data   = (unsigned long)& _edata;
 	memory_management_struct.end_brk    = (unsigned long)& _end;
 
-	//color_printk(RED,BLACK,"boot_para_info->Graphics_Info.HorizontalResolution:%#018lx\tboot_para_info->Graphics_Info.VerticalResolution:%#018lx\tboot_para_info->Graphics_Info.PixelsPerScanLine:%#018lx\n",boot_para_info->Graphics_Info.HorizontalResolution,boot_para_info->Graphics_Info.VerticalResolution,boot_para_info->Graphics_Info.PixelsPerScanLine);
-	//color_printk(RED,BLACK,"boot_para_info->Graphics_Info.FrameBufferBase:%#018lx\tboot_para_info->Graphics_Info.FrameBufferSize:%#018lx\n",boot_para_info->Graphics_Info.FrameBufferBase,boot_para_info->Graphics_Info.FrameBufferSize);
+	color_printk(RED,BLACK,"boot_para_info->Graphics_Info.HorizontalResolution:%#018lx\tboot_para_info->Graphics_Info.VerticalResolution:%#018lx\tboot_para_info->Graphics_Info.PixelsPerScanLine:%#018lx\n",boot_para_info->Graphics_Info.HorizontalResolution,boot_para_info->Graphics_Info.VerticalResolution,boot_para_info->Graphics_Info.PixelsPerScanLine);
+	color_printk(RED,BLACK,"boot_para_info->Graphics_Info.FrameBufferBase:%#018lx\tboot_para_info->Graphics_Info.FrameBufferSize:%#018lx\n",boot_para_info->Graphics_Info.FrameBufferBase,boot_para_info->Graphics_Info.FrameBufferSize);
 
-	// 抛出除法错误
-	// i = 1/0;
-
-	// 页错误
-	//i = *(int *)0xffff80000aa00000;
-
-	//color_printk(RED,BLACK,"memory init \n");
+	color_printk(RED,BLACK,"memory init \n");
 	init_memory();
 
-	/*	分配64页内存
-	color_printk(RED,BLACK,"memory_management_struct.bits_map:%#018lx\n",*memory_management_struct.bits_map);
-	color_printk(RED,BLACK,"memory_management_struct.bits_map:%#018lx\n",*(memory_management_struct.bits_map + 1));
-
-	page = alloc_pages(ZONE_NORMAL,64,PG_PTable_Maped | PG_Active | PG_Kernel);
-
-	for(i = 0;i <= 64;i++)
-	{
-		color_printk(INDIGO,BLACK,"page%d\tattribute:%#018lx\taddress:%#018lx\t",i,(page + i)->attribute,(page + i)->PHY_address);
-		i++;
-		color_printk(INDIGO,BLACK,"page%d\tattribute:%#018lx\taddress:%#018lx\n",i,(page + i)->attribute,(page + i)->PHY_address);
-	}
-
-	color_printk(RED,BLACK,"memory_management_struct.bits_map:%#018lx\n",*memory_management_struct.bits_map);
-	color_printk(RED,BLACK,"memory_management_struct.bits_map:%#018lx\n",*(memory_management_struct.bits_map + 1));
-	*/
-
-	//color_printk(RED,BLACK,"interrupt init \n");
+	color_printk(RED,BLACK,"interrupt init \n");
 	init_interrupt();
 
-	//color_printk(RED,BLACK,"task_init \n");
+	color_printk(RED,BLACK,"task_init \n");
 	task_init();
 
 	while(1);
