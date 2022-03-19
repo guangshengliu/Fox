@@ -5,7 +5,7 @@
 #define NULL 0
 
 // 根据结构体变量内的某个成员变量基地址，准确计算出结构体变量的基地址
-// 反向推倒出父层结构的起始地址
+// 反向推倒出该结构体的起始地址
 #define container_of(ptr,type,member)							\
 ({											\
 	typeof(((type *)0)->member) * p = (ptr);					\

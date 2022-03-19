@@ -2,6 +2,7 @@
 #include "printk.h"
 #include "lib.h"
 #include "linkage.h"
+#include "memory.h"
 
 static char buf[4096]={0};
 
@@ -19,6 +20,49 @@ struct position Pos=
 	.FB_addr=(int *)0xffff800003000000,
 	.FB_length=0x408000,
 };
+
+/*
+*	VBE buffer address
+*	According to pagetable_init()
+*/
+
+void frame_buffer_init()
+{
+	////re init frame buffer;
+	unsigned long i;
+	unsigned long * tmp;
+	unsigned long * tmp1;
+	unsigned int * FB_addr = (unsigned int *)Phy_To_Virt(boot_para_info->Graphics_Info.FrameBufferBase);
+
+	tmp = Phy_To_Virt((unsigned long *)((unsigned long)Get_gdt() & (~ 0xfffUL)) + (((unsigned long)FB_addr >> PAGE_GDT_SHIFT) & 0x1ff));
+	if (*tmp == 0)
+	{
+		unsigned long * virtual = kmalloc(PAGE_4K_SIZE,0);
+		memset(virtual,0,PAGE_4K_SIZE);
+		set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_KERNEL_GDT));
+	}
+
+	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + (((unsigned long)FB_addr >> PAGE_1G_SHIFT) & 0x1ff));
+	if(*tmp == 0)
+	{
+		unsigned long * virtual = kmalloc(PAGE_4K_SIZE,0);
+		memset(virtual,0,PAGE_4K_SIZE);
+		set_pdpt(tmp,mk_pdpt(Virt_To_Phy(virtual),PAGE_KERNEL_Dir));
+	}
+	
+	for(i = 0;i < Pos.FB_length;i += PAGE_2M_SIZE)
+	{
+		tmp1 = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + (((unsigned long)((unsigned long)FB_addr + i) >> PAGE_2M_SHIFT) & 0x1ff));
+	
+		unsigned long phy = boot_para_info->Graphics_Info.FrameBufferBase + i;
+		set_pdt(tmp1,mk_pdt(phy,PAGE_KERNEL_Page | PAGE_PWT | PAGE_PCD));
+	}
+
+	Pos.FB_addr = (unsigned int *)Phy_To_Virt(boot_para_info->Graphics_Info.FrameBufferBase);
+
+	flush_tlb();
+}
+
 /*
 * putchar函数参数：帧缓存线性地址，行分辨率，屏幕行像素点位置，字体颜色，字体背景色和字符位图
 */

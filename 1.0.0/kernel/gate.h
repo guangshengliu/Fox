@@ -11,13 +11,12 @@ struct gate_struct
 	unsigned char x[16];
 };
 
-// 声明为外部变量供其他函数使用
 extern struct desc_struct GDT_Table[];
 extern struct gate_struct IDT_Table[];
 extern unsigned int TSS64_Table[26];
 
 /*
-* 初始化中断描述符表内的门描述符
+*	Initialize the gate descriptor in the interrupt descriptor table
 */
 
 #define _set_gate(gate_selector_addr,attr,ist,code_addr)	\
@@ -58,9 +57,8 @@ do{									\
 }while(0)
 
 /*
-* 以下函数统一使用_set_gate来初始化IDT内的各个表项
-* IDT_Table是内核执行头文件head.S内声明的标识符.globl IDT_Table
-* 中断门初始化IDT内的各表项
+*	IDT_ Table is .globl IDT_ Table which declared in head.S
+*	Interrupt gate initializes IDT Table Items
 */
 
 static inline void set_intr_gate(unsigned int n,unsigned char ist,void * addr)
@@ -69,7 +67,7 @@ static inline void set_intr_gate(unsigned int n,unsigned char ist,void * addr)
 }
 
 /*
-* 陷阱门初始化IDT内的各表项
+*	Trap Gate initialization IDT Table Items
 */
 
 static inline void set_trap_gate(unsigned int n,unsigned char ist,void * addr)
@@ -78,7 +76,7 @@ static inline void set_trap_gate(unsigned int n,unsigned char ist,void * addr)
 }
 
 /*
-* 系统门初始化IDT内的各表项
+*	System gate initialization IDT Table Items
 */
 
 static inline void set_system_gate(unsigned int n,unsigned char ist,void * addr)
@@ -87,7 +85,7 @@ static inline void set_system_gate(unsigned int n,unsigned char ist,void * addr)
 }
 
 /*
-* 系统中断门初始化IDT内的各表项
+*	System interrupt gate initialization IDT Table Items
 */
 
 static inline void set_system_intr_gate(unsigned int n,unsigned char ist,void * addr)	//int3
@@ -97,7 +95,7 @@ static inline void set_system_intr_gate(unsigned int n,unsigned char ist,void * 
 
 
 /*
-
+*	Set segment descriptor of TSS
 */
 
 void set_tss64(unsigned long rsp0,unsigned long rsp1,unsigned long rsp2,unsigned long ist1,unsigned long ist2,unsigned long ist3,

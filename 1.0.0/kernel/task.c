@@ -114,7 +114,7 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 	struct Page *p = NULL;
 	color_printk(WHITE,BLACK,"alloc_pages,bitmap:%#018lx\n",*memory_management_struct.bits_map);
 	// 分配一页物理内存
-	p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped | PG_Active | PG_Kernel);
+	p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped | PG_Kernel);
 
 	color_printk(WHITE,BLACK,"alloc_pages,bitmap:%#018lx\n",*memory_management_struct.bits_map);
 	// 初始化task_struct

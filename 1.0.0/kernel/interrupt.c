@@ -7,7 +7,7 @@
 #include "ptrace.h"
 
 /*
-*	保存通用寄存器状态
+*	Save general register status
 */
 
 #define SAVE_ALL				\
@@ -61,7 +61,7 @@ __asm__ (	SYMBOL_NAME_STR(IRQ)#nr"_interrupt:		\n\t"	\
 
 
 /*
-*	声明24个中断处理函数的入口代码片段
+*	24 interrupt handling functions
 */
 
 Build_IRQ(0x20)
@@ -122,7 +122,7 @@ void (* interrupt[24])(void)=
 };
 
 /*
-*	初始化主/从8259A中断控制器和中断描述符表IDT内的各门描述符
+*	Initialize the master/slave 8259A interrupt controller and the gate descriptors in the interrupt descriptor table
 */
 
 void init_interrupt()
@@ -134,20 +134,20 @@ void init_interrupt()
 	}
 
 	color_printk(RED,BLACK,"8259A init \n");
-	// 主/从8259A中断控制器初始化赋值
-	//8259A-master	ICW1-4
+	//	Master/slave 8259A interrupt controller initialization assignment
+	//	8259A-master	ICW1-4
 	io_out8(0x20,0x11);
 	io_out8(0x21,0x20);
 	io_out8(0x21,0x04);
 	io_out8(0x21,0x01);
 
-	//8259A-slave	ICW1-4
+	//	8259A-slave	ICW1-4
 	io_out8(0xa0,0x11);
 	io_out8(0xa1,0x28);
 	io_out8(0xa1,0x02);
 	io_out8(0xa1,0x01);
 
-	//8259A-M/S	OCW1
+	//	8259A-M/S	OCW1
 	io_out8(0x21,0xfd);
 	io_out8(0xa1,0xff);
 
@@ -155,13 +155,13 @@ void init_interrupt()
 }
 
 /*
-*	显示当前中断请求的中断向量号
+*	Show the interrupt vector number of the current interrupt request
 */
 void do_IRQ(struct pt_regs * regs,unsigned long nr)	//regs,nr
 {
 	unsigned char x;
 	color_printk(RED,BLACK,"do_IRQ:%#018lx\t",nr);
-	// 从I/O端口地址60h处读取出键盘扫描码
+	//	Read the keyboard scan code from the I/O port address 60H
 	x = io_in8(0x60);
 	color_printk(RED,BLACK,"key code:%#018lx\t",x);
 	io_out8(0x20,0x20);
