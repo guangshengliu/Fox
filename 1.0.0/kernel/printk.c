@@ -22,7 +22,7 @@ struct position Pos=
 };
 
 /*
-*	VBE buffer address
+*	VBE buffer address map tp linear address
 *	According to pagetable_init()
 */
 

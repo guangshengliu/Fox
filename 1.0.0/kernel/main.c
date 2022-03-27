@@ -8,6 +8,12 @@
 #include "task.h"
 #include "cpu.h"
 
+#if  APIC
+#include "APIC.h"
+#else
+#include "8259A.h"
+#endif
+
 /*
 		static var 
 		将这些变量放到kernel.lds链接脚本指定的地址处
@@ -65,7 +71,12 @@ void Start_Kernel(void)
 	pagetable_init();
 	
 	color_printk(RED,BLACK,"interrupt init \n");
-	init_interrupt();
+
+	#if  APIC
+		APIC_IOAPIC_init();
+	#else
+		init_8259A();
+	#endif
 	
 	while(1)
 		;

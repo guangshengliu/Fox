@@ -78,7 +78,3 @@ AppPkg/Applications/Video/Video.inf
 # 编译生成.efi文件
 build -a X64 -t GCC5 -p AppPkg/AppPkg.dsc
 ```
-
-# 5.在物理机上运行
-
-将UEFI目录下所有文件复制到U盘根目录下，开机进入电脑启动项，选择U盘引导即可加载该操作系统。

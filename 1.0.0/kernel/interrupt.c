@@ -90,7 +90,7 @@ Build_IRQ(0x36)
 Build_IRQ(0x37)
 
 /*
-*	函数指针数组，数组的每一个元素指向由宏函数Build_IRQ定义的一个中断处理函数入口
+*	Point to 24 interrupt handling functions
 */
 
 void (* interrupt[24])(void)=
@@ -122,48 +122,48 @@ void (* interrupt[24])(void)=
 };
 
 /*
-*	Initialize the master/slave 8259A interrupt controller and the gate descriptors in the interrupt descriptor table
+*	Interrupt registration function
 */
 
-void init_interrupt()
-{
-	int i;
-	for(i = 32;i < 56;i++)
-	{
-		set_intr_gate(i , 2 , interrupt[i - 32]);
-	}
+int register_irq(unsigned long irq,
+		void * arg,
+		void (*handler)(unsigned long nr, unsigned long parameter, struct pt_regs * regs),
+		unsigned long parameter,
+		hw_int_controller * controller,
+		char * irq_name)
+{	
+	//	I/O APIC interrupt vector number is 32~35 
+	//	The interrupt vector number must be decremented by 32
+	irq_desc_T * p = &interrupt_desc[irq - 32];
+	
+	p->controller = controller;
+	p->irq_name = irq_name;
+	p->parameter = parameter;
+	p->flags = 0;
+	p->handler = handler;
 
-	color_printk(RED,BLACK,"8259A init \n");
-	//	Master/slave 8259A interrupt controller initialization assignment
-	//	8259A-master	ICW1-4
-	io_out8(0x20,0x11);
-	io_out8(0x21,0x20);
-	io_out8(0x21,0x04);
-	io_out8(0x21,0x01);
-
-	//	8259A-slave	ICW1-4
-	io_out8(0xa0,0x11);
-	io_out8(0xa1,0x28);
-	io_out8(0xa1,0x02);
-	io_out8(0xa1,0x01);
-
-	//	8259A-M/S	OCW1
-	io_out8(0x21,0xfd);
-	io_out8(0xa1,0xff);
-
-	sti();
+	p->controller->install(irq,arg);
+	p->controller->enable(irq);
+	
+	return 1;
 }
 
 /*
-*	Show the interrupt vector number of the current interrupt request
+*	Interrupt unregistration function
 */
-void do_IRQ(struct pt_regs * regs,unsigned long nr)	//regs,nr
+
+int unregister_irq(unsigned long irq)
 {
-	unsigned char x;
-	color_printk(RED,BLACK,"do_IRQ:%#018lx\t",nr);
-	//	Read the keyboard scan code from the I/O port address 60H
-	x = io_in8(0x60);
-	color_printk(RED,BLACK,"key code:%#018lx\t",x);
-	io_out8(0x20,0x20);
-	color_printk(RED,BLACK,"regs:%#018lx\t<RIP:%#018lx\tRSP:%#018lx>\n",regs,regs->rip,regs->rsp);
+	irq_desc_T * p = &interrupt_desc[irq - 32];
+
+	p->controller->disable(irq);
+	p->controller->uninstall(irq);
+
+	p->controller = NULL;
+	p->irq_name = NULL;
+	p->parameter = NULL;
+	p->flags = 0;
+	p->handler = NULL;
+
+	return 1; 
 }
