@@ -61,6 +61,14 @@ void IOAPIC_edge_ack(unsigned long irq)
 				:::"memory");
 }
 
+void Local_APIC_edge_level_ack(unsigned long irq)
+{
+	__asm__ __volatile__(	"movq	$0x00,	%%rdx	\n\t"
+				"movq	$0x00,	%%rax	\n\t"
+				"movq 	$0x80b,	%%rcx	\n\t"
+				"wrmsr	\n\t"
+				:::"memory");
+}
 /*
 *	RTE register is 64 bits, but IOWIN register is 32 bits
 *	So 2 accesses are required to complete the operation on the RTE register
@@ -368,22 +376,31 @@ void APIC_IOAPIC_init()
 
 void do_IRQ(struct pt_regs * regs,unsigned long nr)	//regs:rsp,nr
 {
-	unsigned char x;
-	irq_desc_T * irq = &interrupt_desc[nr - 32];
+	switch(nr & 0x80)
+	{
+	case 0x00:
+	
+		{
+			irq_desc_T * irq = &interrupt_desc[nr - 32];
 
-	x = io_in8(0x60);	
-	color_printk(BLUE,WHITE,"(IRQ:%#04x)\tkey code:%#04x\n",nr,x);
-	//	Execute interrupt upper half handler
-	if(irq->handler != NULL)
-		irq->handler(nr,irq->parameter,regs);
-	//	Send a reply message to the interrupt controller
-	if(irq->controller != NULL && irq->controller->ack != NULL)
-		irq->controller->ack(nr);
+			if(irq->handler != NULL)
+				irq->handler(nr,irq->parameter,regs);
 
-	__asm__ __volatile__(	"movq	$0x00,	%%rdx	\n\t"
-				"movq	$0x00,	%%rax	\n\t"
-				"movq 	$0x80b,	%%rcx	\n\t"
-				"wrmsr	\n\t"
-				:::"memory");
+			if(irq->controller != NULL && irq->controller->ack != NULL)
+				irq->controller->ack(nr);
+		}
+	break;
+	
+	case 0x80:
+	
+			color_printk(RED,BLACK,"SMP IPI :%d\n",nr);
+			Local_APIC_edge_level_ack(nr);
+	break;
+
+	default:
+	
+		color_printk(RED,BLACK,"do_IRQ receive:%d\n",nr);
+	break;
+	}
 }
 

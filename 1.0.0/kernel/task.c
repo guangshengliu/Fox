@@ -223,8 +223,7 @@ void __switch_to(struct task_struct *prev,struct task_struct *next)
 	// 获取next进程的内核层栈基地址
 	init_tss[0].rsp0 = next->thread->rsp0;
 	// 将上述地址设置到TSS结构体对应的成员变量中
-	set_tss64(init_tss[0].rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
-	// 保存FS与GS段寄存器
+	//set_tss64(init_tss[0].rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);	// 保存FS与GS段寄存器
 	__asm__ __volatile__("movq	%%fs,	%0 \n\t":"=a"(prev->thread->fs));
 	__asm__ __volatile__("movq	%%gs,	%0 \n\t":"=a"(prev->thread->gs));
 	// 将next进程保护的FS与GS段寄存器值还原
@@ -265,8 +264,7 @@ void task_init()
 	wrmsr(0x176,(unsigned long)system_call);
 
 //	init_thread,init_tss
-	set_tss64(init_thread.rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
-
+	//set_tss64(init_thread.rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
 	init_tss[0].rsp0 = init_thread.rsp0;
 
 	list_init(&init_task_union.task.list);

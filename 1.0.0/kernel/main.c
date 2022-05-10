@@ -14,6 +14,11 @@
 #include "8259A.h"
 #endif
 
+#include "keyboard.h"
+#include "spinlock.h"
+#include "APIC.h"
+#include "SMP.h"
+
 /*
 		static var 
 		将这些变量放到kernel.lds链接脚本指定的地址处
@@ -21,8 +26,17 @@
 
 struct KERNEL_BOOT_PARAMETER_INFORMATION *boot_para_info = (struct KERNEL_BOOT_PARAMETER_INFORMATION *)0xffff800000060000;
 
+struct Global_Memory_Descriptor memory_management_struct = {{0},0};
+
+int global_i = 0;
+
+extern spinlock_T SMP_lock;
+
 void Start_Kernel(void)
 {
+	struct INT_CMD_REG icr_entry;
+	unsigned int * tss = NULL;
+
 	int *addr = (int *)0xffff800003000000;
 	int i;
 	struct Page * page = NULL;
@@ -41,10 +55,10 @@ void Start_Kernel(void)
 	Pos.FB_addr = (int *)0xffff800003000000;
 	Pos.FB_length = (Pos.XResolution * Pos.YResolution * 4 + PAGE_4K_SIZE - 1) & PAGE_4K_MASK;
 
+	spin_init(&Pos.printk_lock);
 	load_TR(10);
 
-	set_tss64(_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
-
+	set_tss64(TSS64_Table,_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
 	sys_vector_init();
 	
 	//init_cpu();
@@ -69,15 +83,58 @@ void Start_Kernel(void)
 
 	color_printk(RED,BLACK,"pagetable init \n");	
 	pagetable_init();
-	
-	color_printk(RED,BLACK,"interrupt init \n");
+		
+	Local_APIC_init();
 
-	#if  APIC
-		APIC_IOAPIC_init();
-	#else
-		init_8259A();
-	#endif
+	color_printk(RED,BLACK,"ICR init \n");	
+
+	SMP_init();
+
+	//prepare send INIT IPI
 	
+	icr_entry.vector = 0x00;
+	icr_entry.deliver_mode =  APIC_ICR_IOAPIC_INIT;
+	icr_entry.dest_mode = ICR_IOAPIC_DELV_PHYSICAL;
+	icr_entry.deliver_status = APIC_ICR_IOAPIC_Idle;
+	icr_entry.res_1 = 0;
+	icr_entry.level = ICR_LEVEL_DE_ASSERT;
+	icr_entry.trigger = APIC_ICR_IOAPIC_Edge;
+	icr_entry.res_2 = 0;
+	icr_entry.dest_shorthand = ICR_ALL_EXCLUDE_Self;
+	icr_entry.res_3 = 0;
+	icr_entry.destination.x2apic_destination = 0x00;
+	
+	wrmsr(0x830,*(unsigned long *)&icr_entry);	//INIT IPI
+
+	//prepare send Start-up IPI
+
+	for(global_i = 1;global_i < 4;global_i++)
+	{
+		spin_lock(&SMP_lock);
+
+		_stack_start = (unsigned long)kmalloc(STACK_SIZE,0) + STACK_SIZE;
+		tss = (unsigned int *)kmalloc(128,0);
+		set_tss_descriptor(10 + global_i * 2,tss);
+		set_tss64(tss,_stack_start,_stack_start,_stack_start,_stack_start,_stack_start,_stack_start,_stack_start,_stack_start,_stack_start,_stack_start);
+	
+		icr_entry.vector = 0x20;
+		icr_entry.deliver_mode = ICR_Start_up;
+		icr_entry.dest_shorthand = ICR_No_Shorthand;
+		icr_entry.destination.x2apic_destination = global_i;
+	
+		wrmsr(0x830,*(unsigned long *)&icr_entry);	//Start-up IPI
+		wrmsr(0x830,*(unsigned long *)&icr_entry);	//Start-up IPI
+	}
+
+	icr_entry.vector = 0xc8;
+	icr_entry.destination.x2apic_destination = 1;
+	icr_entry.deliver_mode = APIC_ICR_IOAPIC_Fixed;
+
+	wrmsr(0x830,*(unsigned long *)&icr_entry);
+
+	icr_entry.vector = 0xc9;
+	wrmsr(0x830,*(unsigned long *)&icr_entry);
+
 	while(1)
 		;
 }

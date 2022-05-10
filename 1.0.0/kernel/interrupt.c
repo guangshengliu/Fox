@@ -90,6 +90,21 @@ Build_IRQ(0x36)
 Build_IRQ(0x37)
 
 /*
+
+*/
+
+Build_IRQ(0xc8)
+Build_IRQ(0xc9)
+Build_IRQ(0xca)
+Build_IRQ(0xcb)
+Build_IRQ(0xcc)
+Build_IRQ(0xcd)
+Build_IRQ(0xce)
+Build_IRQ(0xcf)
+Build_IRQ(0xd0)
+Build_IRQ(0xd1)
+
+/*
 *	Point to 24 interrupt handling functions
 */
 
@@ -119,6 +134,24 @@ void (* interrupt[24])(void)=
 	IRQ0x35_interrupt,
 	IRQ0x36_interrupt,
 	IRQ0x37_interrupt,
+};
+
+/*
+
+*/
+
+void (* SMP_interrupt[10])(void)=
+{
+	IRQ0xc8_interrupt,
+	IRQ0xc9_interrupt,
+	IRQ0xca_interrupt,
+	IRQ0xcb_interrupt,
+	IRQ0xcc_interrupt,
+	IRQ0xcd_interrupt,
+	IRQ0xce_interrupt,
+	IRQ0xcf_interrupt,
+	IRQ0xd0_interrupt,
+	IRQ0xd1_interrupt,
 };
 
 /*

@@ -266,8 +266,8 @@ void init_memory()
 
 	color_printk(ORANGE,BLACK,"1.memory_management_struct.bits_map:%#018lx\tzone_struct->page_using_count:%d\tzone_struct->page_free_count:%d\n",*memory_management_struct.bits_map,memory_management_struct.zones_struct->page_using_count,memory_management_struct.zones_struct->page_free_count);
 
-	for(i = 0;i < 10;i++)
-		*(Phy_To_Virt(Global_CR3)  + i) = 0UL;
+	//for(i = 0;i < 10;i++)
+		//*(Phy_To_Virt(Global_CR3)  + i) = 0UL;
 
 	flush_tlb();
 }

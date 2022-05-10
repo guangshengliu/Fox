@@ -5,11 +5,13 @@ ASFLAGS := --64
 PIC := APIC
 
 all: system_tmp kallsyms.o
-	ld -b elf64-x86-64 -z muldefs -o system head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o sys.o syscalls.o kallsyms.o cpu.o -T Kernel.lds 
+	ld -b elf64-x86-64 -z muldefs -o system head.o entry.o APU_boot.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o \
+	sys.o syscalls.o kallsyms.o cpu.o keyboard.o SMP.o -T Kernel.lds 
 	objcopy -I elf64-x86-64 -S -R ".eh_frame" -R ".comment" -O binary system kernel.bin
 
-system_tmp: head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o sys.o syscalls.o cpu.o
-	ld -b elf64-x86-64 -z muldefs -o system_tmp head.o entry.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o sys.o syscalls.o cpu.o -T Kernel.lds 
+system_tmp: head.o entry.o APU_boot.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o sys.o syscalls.o cpu.o keyboard.o SMP.o
+	ld -b elf64-x86-64 -z muldefs -o system_tmp head.o entry.o APU_boot.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o \
+	sys.o syscalls.o cpu.o keyboard.o SMP.o -T Kernel.lds 
 
 head.o:	head.S
 	gcc -E  head.S > head.s
@@ -18,6 +20,10 @@ head.o:	head.S
 entry.o: entry.S
 	gcc -E  entry.S > entry.s
 	as $(ASFLAGS) -o entry.o entry.s
+
+APU_boot.o: APU_boot.S
+	gcc -E APU_boot.S > APU_boot.s
+	as $(ASFLAGS) -o APU_boot.o APU_boot.s
 	
 main.o:	main.c
 	gcc  $(CFLAGS) -c main.c -D$(PIC) -fno-stack-protector
@@ -57,6 +63,12 @@ kallsyms.o: kallsyms.c system_tmp
 
 cpu.o: cpu.c
 	gcc  $(CFLAGS) -c cpu.c	-fno-stack-protector
+
+keyboard.o: keyboard.c
+	gcc  $(CFLAGS) -c keyboard.c	-fno-stack-protector
+
+SMP.o: SMP.c
+	gcc  $(CFLAGS) -c SMP.c	-fno-stack-protector
 
 clean:
 	rm -rf *.o *.s~ *.s *.S~ *.c~ *.h~ system system_tmp Makefile~ Kernel.lds~ kernel.bin kallsyms kallsyms.o kallsyms.S

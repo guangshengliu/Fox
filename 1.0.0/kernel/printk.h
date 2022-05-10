@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include "font.h"
 #include "linkage.h"
+#include "spinlock.h"
 
 #define ZEROPAD	1		/* pad with zero */
 #define SIGN	2		/* unsigned/signed long */
@@ -50,6 +51,8 @@ struct position
 	unsigned int * FB_addr;
 	// 帧缓存区容量大小
 	unsigned long FB_length;
+
+	spinlock_T printk_lock;
 };
 
 extern struct position Pos;

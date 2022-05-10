@@ -3,6 +3,7 @@
 #include "lib.h"
 #include "linkage.h"
 #include "memory.h"
+#include "spinlock.h"
 
 static char buf[4096]={0};
 
@@ -386,6 +387,8 @@ int color_printk(unsigned int FRcolor,unsigned int BKcolor,const char * fmt,...)
 	va_list args;
 	va_start(args, fmt);
 
+	spin_lock(&Pos.printk_lock);
+
 	// 得到字符串长度
 	i = vsprintf(buf,fmt, args);
 
@@ -450,5 +453,7 @@ Label_tab:
 		}
 
 	}
+	spin_unlock(&Pos.printk_lock);
+	
 	return i;
 }
