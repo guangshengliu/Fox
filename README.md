@@ -1,17 +1,14 @@
-# 0.0.0版本
+# System Run Method
 
-0.0.0版本主要实现操作系统在bochs虚拟机上的启动，从实模式进入保护模式再到IA-32e模式，然后跳转到内核程序。内核主要实现了系统异常检测，内存管理，中断处理，进程管理等基本功能。
+1. A USB flash disk supporting the installation system (with a space size of more than 100 MB)
+2. Copy the files in the UEFI directory to the root directory of the USB flash disk
+3. Start your computer, go to the startup item selection page (Lenovo laptops normally press and hold F12), select USB flash disk boot
+4. Wait for the system to load
 
-# 1.0.0版本
-
-1.0.0版本主要实现操作系统从虚拟机到物理机上移植，目前支持联想Ideapad 320s笔记本电脑。
-
-此版本将抛弃0.0.0版本的BIOS启动，使用较为广泛的UEFI启动操作系统。在此基础上实现0.0.0版本所有功能在物理机上的正常运行。
-
-新增SLAB内存池和基于SLAB内存池技术的通用内存管理单元，有效防止长时间分配/回收可用内存造成的内存碎片过多。
-
-新增中断处理单元，基于APIC实现中断处理。之前版本的中断功能基于8259A PIC实现，是单核处理器时代的典型中断控制器芯片。在多核处理器时代，APIC能够更快响应中断请求，显著提高处理器的中断处理能力。
-
-新增键盘驱动，在输出窗口打印输入的英文字母。
-
-新增SMP系统结构下的多核处理器，包括多核引导初始化，多核异常处理，多核处理器加锁，多核的中断处理。
+# Version 1.0.0
+1. Version 1.0.0 ports operating systems from virtual machines to physical machines and currently supports Lenovo Ideapad 320s laptops.
+2. This version will discard version 0.0.0 BIOS boots and use the wider UEFI boot operating system. On this basis, all functions of version 0.0.0 will run normally on the physical machine.
+   New SLAB memory pool and general memory management unit based on SLAB memory pool technology effectively prevent excessive memory fragmentation caused by long time allocation/recycling of available memory.
+3. An interrupt processing unit has been added to implement interrupt processing based on APIC. Previous versions of interrupt functionality, based on 8259A PIC, were typical interrupt controller chips in the era of single-core processors. In the era of multi-core processors, APIC can respond faster to interrupt requests and significantly improve the interrupt processing capacity of processors.
+4. New keyboard driver to print the input letters in the output window.
+5. Multi-core processors under the new SMP system architecture include multi-core boot initialization, multi-core exception handling, multi-core processor locking, and multi-core interrupt handling.

@@ -5,7 +5,6 @@
 #include "spinlock.h"
 #include "interrupt.h"
 #include "task.h"
-//#include "schedule.h"
 
 spinlock_T SMP_lock;
 int global_i = 0;
