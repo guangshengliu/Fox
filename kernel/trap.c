@@ -1,7 +1,8 @@
 #include "trap.h"
 #include "gate.h"
 #include "ptrace.h"
-#include "task.h"
+#include "printk.h"
+#include "SMP.h"
 
 int lookup_kallsyms(unsigned long address,int level)
 {
@@ -52,10 +53,8 @@ void backtrace(struct pt_regs * regs)
 
 void do_divide_error(struct pt_regs * regs,unsigned long error_code)
 {
-	color_printk(RED,BLACK,"do_divide_error(0),ERROR_CODE:%#018lx\n",error_code);
-	backtrace(regs);
-	while(1)
-		;
+	color_printk(RED,BLACK,"do_divide_error(0),ERROR_CODE:%#018lx,RSP:%#018lx,RIP:%#018lx,CPU:%#018lx\n",error_code , regs->rsp , regs->rip , SMP_cpu_id());
+	while(1);
 }
 
 /*

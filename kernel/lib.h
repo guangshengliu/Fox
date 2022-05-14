@@ -419,9 +419,30 @@ static inline unsigned long rdmsr(unsigned long address)
 	return (unsigned long)tmp0<<32 | tmp1;
 }
 
+/*
+*	Write MSR register's high 32 bits first and writer low 32 bits later
+*/
+
 static inline void wrmsr(unsigned long address,unsigned long value)
 {
 	__asm__ __volatile__("wrmsr	\n\t"::"d"(value >> 32),"a"(value & 0xffffffff),"c"(address):"memory");	
+}
+
+static inline unsigned long get_rsp()
+{
+	unsigned long tmp = 0;
+	__asm__ __volatile__	( "movq	%%rsp, %0	\n\t":"=r"(tmp)::"memory");
+	return tmp;
+}
+
+static inline unsigned long get_rflags()
+{
+	unsigned long tmp = 0;
+	__asm__ __volatile__	("pushfq	\n\t"
+				 "movq	(%%rsp), %0	\n\t"
+				 "popfq	\n\t"
+				:"=r"(tmp)::"memory");
+	return tmp;
 }
 
 #endif

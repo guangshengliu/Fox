@@ -6,12 +6,13 @@ PIC := APIC
 
 all: system_tmp kallsyms.o
 	ld -b elf64-x86-64 -z muldefs -o system head.o entry.o APU_boot.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o \
-	sys.o syscalls.o kallsyms.o cpu.o keyboard.o SMP.o -T Kernel.lds 
+sys.o syscalls.o kallsyms.o cpu.o keyboard.o SMP.o time.o HPET.o timer.o softirq.o schedule.o -T Kernel.lds 
 	objcopy -I elf64-x86-64 -S -R ".eh_frame" -R ".comment" -O binary system kernel.bin
 
-system_tmp: head.o entry.o APU_boot.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o sys.o syscalls.o cpu.o keyboard.o SMP.o
+system_tmp: head.o entry.o APU_boot.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o sys.o syscalls.o cpu.o keyboard.o \
+SMP.o time.o HPET.o timer.o softirq.o schedule.o
 	ld -b elf64-x86-64 -z muldefs -o system_tmp head.o entry.o APU_boot.o main.o printk.o trap.o memory.o interrupt.o PIC.o task.o \
-	sys.o syscalls.o cpu.o keyboard.o SMP.o -T Kernel.lds 
+sys.o syscalls.o cpu.o keyboard.o SMP.o time.o HPET.o timer.o softirq.o schedule.o -T Kernel.lds 
 
 head.o:	head.S
 	gcc -E  head.S > head.s
@@ -69,6 +70,21 @@ keyboard.o: keyboard.c
 
 SMP.o: SMP.c
 	gcc  $(CFLAGS) -c SMP.c	-fno-stack-protector
+
+HPET.o: HPET.c
+	gcc  $(CFLAGS) -c HPET.c	-fno-stack-protector
+
+time.o: time.c
+	gcc  $(CFLAGS) -c time.c
+
+timer.o: timer.c
+	gcc  $(CFLAGS) -c timer.c
+
+softirq.o: softirq.c
+	gcc  $(CFLAGS) -c softirq.c
+
+schedule.o: schedule.c
+	gcc  $(CFLAGS) -c schedule.c
 
 clean:
 	rm -rf *.o *.s~ *.s *.S~ *.c~ *.h~ system system_tmp Makefile~ Kernel.lds~ kernel.bin kallsyms kallsyms.o kallsyms.S

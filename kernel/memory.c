@@ -1,5 +1,6 @@
 #include "UEFI_boot_param_info.h"
 #include "memory.h"
+#include "printk.h"
 #include "lib.h"
 
 

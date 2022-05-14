@@ -85,28 +85,30 @@ struct thread_struct
 *	PCB进程控制块
 */
 
-#define PF_KTHREAD	(1 << 0)
-
 struct task_struct
 {
-	struct List list;		// 双向链表，连接各个进程控制结构体
 	volatile long state;	// 进程状态：运行态，停止态，可中断态等
 	unsigned long flags;	// 进程标志：进程，线程，内核线程
+	long preempt_count;		// 自旋锁计算量
+	long signal;	// 进程持有的信号
+	long cpu_id;		//CPU ID
 
 	struct mm_struct *mm;	// 内存空间分布结构体，记录内存页表和程序段信息
 	struct thread_struct *thread;	// 进程切换时保留的状态信息
+	struct List list;		// 双向链表，连接各个进程控制结构体
 	// 进程地址空间范围
 	unsigned long addr_limit;	/*0x0000,0000,0000,0000 - 0x0000,7fff,ffff,ffff user*/
 					/*0xffff,8000,0000,0000 - 0xffff,ffff,ffff,ffff kernel*/
 
 	long pid;		// 进程ID号
-
-	long counter;	// 进程可用时间片
-
-	long signal;	// 进程持有的信号
-
 	long priority;	// 进程优先级
+	long vrun_time;	// 进程期望运行时间
 };
+
+//	struct task_struct->flags:
+#define PF_KTHREAD	(1UL << 0)
+//	Weather can be schedule
+#define NEED_SCHEDULE	(1UL << 1)
 
 /*
 *	进程控制结构体与进程的内核层栈空间共用空间
@@ -122,13 +124,15 @@ union task_union
 {			\
 	.state = TASK_UNINTERRUPTIBLE,		\
 	.flags = PF_KTHREAD,		\
+	.preempt_count = 0,		\
+	.signal = 0,		\
+	.cpu_id = 0,		\
 	.mm = &init_mm,			\
 	.thread = &init_thread,		\
 	.addr_limit = 0xffff800000000000,	\
 	.pid = 0,			\
-	.counter = 1,		\
-	.signal = 0,		\
-	.priority = 0		\
+	.priority = 2,		\
+	.vrun_time = 0		\
 }
 
 /*

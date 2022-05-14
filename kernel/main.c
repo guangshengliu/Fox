@@ -18,6 +18,11 @@
 #include "spinlock.h"
 #include "APIC.h"
 #include "SMP.h"
+#include "HPET.h"
+#include "timer.h"
+#include "softirq.h"
+#include "atomic.h"
+#include "semaphore.h"
 
 /*
 		static var 
@@ -28,14 +33,11 @@ struct KERNEL_BOOT_PARAMETER_INFORMATION *boot_para_info = (struct KERNEL_BOOT_P
 
 struct Global_Memory_Descriptor memory_management_struct = {{0},0};
 
-int global_i = 0;
-
-extern spinlock_T SMP_lock;
 
 void Start_Kernel(void)
 {
 	struct INT_CMD_REG icr_entry;
-	unsigned int * tss = NULL;
+	unsigned char * ptr = NULL;
 
 	int *addr = (int *)0xffff800003000000;
 	int i;
@@ -56,26 +58,36 @@ void Start_Kernel(void)
 	Pos.FB_length = (Pos.XResolution * Pos.YResolution * 4 + PAGE_4K_SIZE - 1) & PAGE_4K_MASK;
 
 	spin_init(&Pos.printk_lock);
+
 	load_TR(10);
 
-	set_tss64(TSS64_Table,_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
-	sys_vector_init();
-	
-	//init_cpu();
+	set_tss64((unsigned int *)&init_tss[0],_stack_start, _stack_start, _stack_start, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00, 0xffff800000007c00);
 
+	sys_vector_init();
+
+	//init_cpu();
+	
 	memory_management_struct.start_code = (unsigned long)& _text;
 	memory_management_struct.end_code   = (unsigned long)& _etext;
 	memory_management_struct.end_data   = (unsigned long)& _edata;
 	memory_management_struct.end_brk    = (unsigned long)& _end;
-
-	//color_printk(RED,BLACK,"boot_para_info->Graphics_Info.HorizontalResolution:%#018lx\tboot_para_info->Graphics_Info.VerticalResolution:%#018lx\tboot_para_info->Graphics_Info.PixelsPerScanLine:%#018lx\n",boot_para_info->Graphics_Info.HorizontalResolution,boot_para_info->Graphics_Info.VerticalResolution,boot_para_info->Graphics_Info.PixelsPerScanLine);
-	//color_printk(RED,BLACK,"boot_para_info->Graphics_Info.FrameBufferBase:%#018lx\tboot_para_info->Graphics_Info.FrameBufferSize:%#018lx\n",boot_para_info->Graphics_Info.FrameBufferBase,boot_para_info->Graphics_Info.FrameBufferSize);
 
 	color_printk(RED,BLACK,"memory init \n");
 	init_memory();
 
 	color_printk(RED,BLACK,"slab init \n");
 	slab_init();
+
+	ptr = (unsigned char *)kmalloc(STACK_SIZE,0) + STACK_SIZE;
+	((struct task_struct *)(ptr - STACK_SIZE))->cpu_id = 0;
+		
+	init_tss[0].ist1 = (unsigned long)ptr;
+	init_tss[0].ist2 = (unsigned long)ptr;
+	init_tss[0].ist3 = (unsigned long)ptr;
+	init_tss[0].ist4 = (unsigned long)ptr;
+	init_tss[0].ist5 = (unsigned long)ptr;
+	init_tss[0].ist6 = (unsigned long)ptr;
+	init_tss[0].ist7 = (unsigned long)ptr;
 
 	color_printk(RED,BLACK,"frame buffer init \n");
 	frame_buffer_init();
@@ -84,8 +96,23 @@ void Start_Kernel(void)
 	color_printk(RED,BLACK,"pagetable init \n");	
 	pagetable_init();
 		
-	Local_APIC_init();
+	color_printk(RED,BLACK,"interrupt init \n");
 
+	#if  APIC
+		APIC_IOAPIC_init();
+	#else
+		init_8259A();
+	#endif
+
+	color_printk(RED,BLACK,"schedule init \n");
+	schedule_init();
+
+	color_printk(RED,BLACK,"Soft IRQ init \n");
+	softirq_init();
+
+	color_printk(RED,BLACK,"keyboard init \n");
+	keyboard_init();
+	
 	color_printk(RED,BLACK,"ICR init \n");	
 
 	SMP_init();
@@ -111,11 +138,28 @@ void Start_Kernel(void)
 	for(global_i = 1;global_i < 4;global_i++)
 	{
 		spin_lock(&SMP_lock);
+		ptr = (unsigned char *)kmalloc(STACK_SIZE,0);
+		_stack_start = (unsigned long)ptr + STACK_SIZE;
+		((struct task_struct *)ptr)->cpu_id = global_i;
 
-		_stack_start = (unsigned long)kmalloc(STACK_SIZE,0) + STACK_SIZE;
-		tss = (unsigned int *)kmalloc(128,0);
-		set_tss_descriptor(10 + global_i * 2,tss);
-		set_tss64(tss,_stack_start,_stack_start,_stack_start,_stack_start,_stack_start,_stack_start,_stack_start,_stack_start,_stack_start,_stack_start);
+		memset(&init_tss[global_i],0,sizeof(struct tss_struct));
+
+		init_tss[global_i].rsp0 = _stack_start;
+		init_tss[global_i].rsp1 = _stack_start;
+		init_tss[global_i].rsp2 = _stack_start;
+
+		ptr = (unsigned char *)kmalloc(STACK_SIZE,0) + STACK_SIZE;
+		((struct task_struct *)(ptr - STACK_SIZE))->cpu_id = global_i;
+		
+		init_tss[global_i].ist1 = (unsigned long)ptr;
+		init_tss[global_i].ist2 = (unsigned long)ptr;
+		init_tss[global_i].ist3 = (unsigned long)ptr;
+		init_tss[global_i].ist4 = (unsigned long)ptr;
+		init_tss[global_i].ist5 = (unsigned long)ptr;
+		init_tss[global_i].ist6 = (unsigned long)ptr;
+		init_tss[global_i].ist7 = (unsigned long)ptr;
+
+		set_tss_descriptor(10 + global_i * 2,&init_tss[global_i]);
 	
 		icr_entry.vector = 0x20;
 		icr_entry.deliver_mode = ICR_Start_up;
@@ -125,16 +169,27 @@ void Start_Kernel(void)
 		wrmsr(0x830,*(unsigned long *)&icr_entry);	//Start-up IPI
 		wrmsr(0x830,*(unsigned long *)&icr_entry);	//Start-up IPI
 	}
-
 	icr_entry.vector = 0xc8;
 	icr_entry.destination.x2apic_destination = 1;
 	icr_entry.deliver_mode = APIC_ICR_IOAPIC_Fixed;
-
 	wrmsr(0x830,*(unsigned long *)&icr_entry);
 
 	icr_entry.vector = 0xc9;
 	wrmsr(0x830,*(unsigned long *)&icr_entry);
 
+	color_printk(RED,BLACK,"Timer init \n");
+	timer_init();
+
+	color_printk(RED,BLACK,"HPET init \n");
+	HPET_init();
+
+	color_printk(RED,BLACK,"task init \n");
+	sti();
+	//task_init();
+
 	while(1)
-		;
+	{
+		if(p_kb->count)
+			analysis_keycode();
+	}
 }

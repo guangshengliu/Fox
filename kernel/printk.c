@@ -385,13 +385,15 @@ int color_printk(unsigned int FRcolor,unsigned int BKcolor,const char * fmt,...)
 	int count = 0;
 	int line = 0;
 	va_list args;
+
+	if(get_rflags() & 0x200UL)
+	{
+		spin_lock(&Pos.printk_lock);
+	}
+
 	va_start(args, fmt);
-
-	spin_lock(&Pos.printk_lock);
-
 	// 得到字符串长度
 	i = vsprintf(buf,fmt, args);
-
 	va_end(args);
 
 	for(count = 0;count < i || line;count++)
@@ -453,7 +455,11 @@ Label_tab:
 		}
 
 	}
-	spin_unlock(&Pos.printk_lock);
+	
+	if(get_rflags() & 0x200UL)
+	{
+		spin_unlock(&Pos.printk_lock);
+	}
 	
 	return i;
 }

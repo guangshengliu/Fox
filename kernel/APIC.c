@@ -7,6 +7,8 @@
 #include "ptrace.h"
 #include "cpu.h"
 #include "APIC.h"
+#include "schedule.h"
+#include "SMP.h"
 
 /*
 *	Interrupt handler function
@@ -367,7 +369,7 @@ void APIC_IOAPIC_init()
 	memset(interrupt_desc,0,sizeof(irq_desc_T)*NR_IRQS);
 
 	//enable IF eflages
-	sti();
+	//sti();
 }
 
 /*
@@ -389,18 +391,25 @@ void do_IRQ(struct pt_regs * regs,unsigned long nr)	//regs:rsp,nr
 			if(irq->controller != NULL && irq->controller->ack != NULL)
 				irq->controller->ack(nr);
 		}
-	break;
+		break;
 	
 	case 0x80:
 	
-			color_printk(RED,BLACK,"SMP IPI :%d\n",nr);
-			Local_APIC_edge_level_ack(nr);
-	break;
+		color_printk(RED,BLACK,"SMP IPI:%d,CPU:%d\n",nr,SMP_cpu_id());
+		Local_APIC_edge_level_ack(nr);
+		{
+			irq_desc_T * irq = &SMP_IPI_desc[nr - 200];
+
+			if(irq->handler != NULL)
+				irq->handler(nr,irq->parameter,regs);
+		}
+
+		break;
 
 	default:
 	
 		color_printk(RED,BLACK,"do_IRQ receive:%d\n",nr);
-	break;
+		break;
 	}
 }
 

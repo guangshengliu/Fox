@@ -5,10 +5,30 @@
 #include "spinlock.h"
 #include "interrupt.h"
 #include "task.h"
+#include "schedule.h"
 
 spinlock_T SMP_lock;
 int global_i = 0;
 
+
+void IPI_0x200(unsigned long nr, unsigned long parameter, struct pt_regs * regs)
+{
+	switch(current->priority)
+	{
+		case 0:
+		case 1:
+			task_schedule[SMP_cpu_id()].CPU_exec_task_jiffies--;
+			current->vrun_time += 1;
+			break;
+		case 2:
+		default:
+			task_schedule[SMP_cpu_id()].CPU_exec_task_jiffies -= 2;
+			current->vrun_time += 2;
+			break;
+	}
+	if(task_schedule[SMP_cpu_id()].CPU_exec_task_jiffies <= 0)
+		current->flags |= NEED_SCHEDULE;
+}
 
 /*
 *	Init SMP system
@@ -37,10 +57,10 @@ void SMP_init()
 
 	for(i = 200;i < 210;i++)
 	{
-		set_intr_gate(i , 2 , SMP_interrupt[i - 200]);
+		set_intr_gate(i , 0 , SMP_interrupt[i - 200]);
 	}
 	memset(SMP_IPI_desc,0,sizeof(irq_desc_T) * 10);
-	//register_IPI(200,NULL,&IPI_0x200,NULL,NULL,"IPI 0x200");
+	register_IPI(200,NULL,&IPI_0x200,NULL,NULL,"IPI 0x200");
 }
 
 void Start_SMP()
@@ -88,13 +108,36 @@ void Start_SMP()
 				:
 				:"memory");
 	
-	color_printk(RED,YELLOW,"x2APIC ID:%#010x\n",x);
+	color_printk(RED,YELLOW,"x2APIC ID:%#010x\t",x);
 
-	load_TR(10 + (global_i -1)* 2);
+	current->state = TASK_RUNNING;
+	current->flags = PF_KTHREAD;
+	current->mm = &init_mm;
+
+	list_init(&current->list);
+	current->addr_limit = 0xffff800000000000;
+	current->priority = 2;
+	current->vrun_time = 0;
+
+
+	current->thread = (struct thread_struct *)(current + 1);
+	memset(current->thread,0,sizeof(struct thread_struct));
+	current->thread->rsp0 = _stack_start;
+	current->thread->rsp = _stack_start;
+	current->thread->fs = KERNEL_DS;
+	current->thread->gs = KERNEL_DS;
+	init_task[SMP_cpu_id()] = current;
+
+	load_TR(10 + (global_i -1) * 2);
 
 	spin_unlock(&SMP_lock);
+	current->preempt_count = 0;
+
 	sti();
-	
+
+	if(SMP_cpu_id() == 3)
+		task_init();
+
 	while(1)
 		hlt();
 }

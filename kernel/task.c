@@ -1,11 +1,13 @@
 #include "task.h"
 #include "ptrace.h"
-#include "printk.h"
 #include "lib.h"
 #include "memory.h"
-#include "unistd.h"
 #include "linkage.h"
+#include "unistd.h"
 #include "gate.h"
+#include "schedule.h"
+#include "printk.h"
+#include "SMP.h"
 
 union task_union init_task_union __attribute__((__section__ (".data.init_task"))) = {INIT_TASK(init_task_union.task)};
 
@@ -67,18 +69,43 @@ void user_level_function()
 
 unsigned long do_execve(struct pt_regs * regs)
 {
-//	regs->rdx = 0x800000;	//RIP
-//	regs->rcx = 0xa00000;	//RSP
+	unsigned long addr = 0x800000;
+	unsigned long * tmp;
+	unsigned long * virtual = NULL;
+	struct Page * p = NULL;
+	
+	//regs->rdx = 0x800000;	//RIP
+	//regs->rcx = 0xa00000;	//RSP
 	regs->r10 = 0x800000;	//RIP
 	regs->r11 = 0xa00000;	//RSP	
 	regs->rax = 1;	
 	regs->ds = 0;
 	regs->es = 0;
 	color_printk(RED,BLACK,"do_execve task is running\n");
-	// 将应用层执行函数user_level_function复制到线性地址0x800000处执行
+
+	Global_CR3 = Get_gdt();
+
+	tmp = Phy_To_Virt((unsigned long *)((unsigned long)Global_CR3 & (~ 0xfffUL)) + ((addr >> PAGE_GDT_SHIFT) & 0x1ff));
+
+	virtual = kmalloc(PAGE_4K_SIZE,0);
+	set_mpl4t(tmp,mk_mpl4t(Virt_To_Phy(virtual),PAGE_USER_GDT));
+
+	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((addr >> PAGE_1G_SHIFT) & 0x1ff));
+	virtual = kmalloc(PAGE_4K_SIZE,0);
+	set_pdpt(tmp,mk_pdpt(Virt_To_Phy(virtual),PAGE_USER_Dir));
+
+	tmp = Phy_To_Virt((unsigned long *)(*tmp & (~ 0xfffUL)) + ((addr >> PAGE_2M_SHIFT) & 0x1ff));
+	p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped);
+	set_pdt(tmp,mk_pdt(p->PHY_address,PAGE_USER_Page));
+
+	flush_tlb();
+	
+	if(!(current->flags & PF_KTHREAD))
+		current->addr_limit = 0xffff800000000000;
+
 	memcpy(user_level_function,(void *)0x800000,1024);
 
-	return 0;
+	return 1;
 }
 
 /*
@@ -94,6 +121,7 @@ unsigned long init(unsigned long arg)
 	current->thread->rip = (unsigned long)ret_system_call;
 	current->thread->rsp = (unsigned long)current + STACK_SIZE - sizeof(struct pt_regs);
 	regs = (struct pt_regs *)current->thread->rsp;
+	current->flags = 0;
 
 	__asm__	__volatile__	(	"movq	%1,	%%rsp	\n\t"
 					"pushq	%2		\n\t"
@@ -125,12 +153,16 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 	*tsk = *current;
 
 	list_init(&tsk->list);
-	// 链接入进程队列
-	list_add_to_before(&init_task_union.task.list,&tsk->list);	
+
+	tsk->priority = 2;
 	tsk->pid++;	
+	tsk->preempt_count = 0;
+	tsk->cpu_id = SMP_cpu_id();
 	tsk->state = TASK_UNINTERRUPTIBLE;
+
 	// 初始化thread_struct
 	thd = (struct thread_struct *)(tsk + 1);
+	memset(thd,0,sizeof(*thd));
 	tsk->thread = thd;	
 	// 制造进程执行现场
 	memcpy(regs,(void *)((unsigned long)tsk + STACK_SIZE - sizeof(struct pt_regs)),sizeof(struct pt_regs));
@@ -138,6 +170,8 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 	thd->rsp0 = (unsigned long)tsk + STACK_SIZE;
 	thd->rip = regs->rip;
 	thd->rsp = (unsigned long)tsk + STACK_SIZE - sizeof(struct pt_regs);
+	thd->fs = KERNEL_DS;
+	thd->gs = KERNEL_DS;
 	// 判断目标进程PF_KTHREAD标志位
 	// PF_KTHREAD=1则该进程运行于应用层
 	// 程序入口地址设置在ret_from_intr地址处，否则设置在kernel_thread_func地址处
@@ -145,8 +179,9 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 		thd->rip = regs->rip = (unsigned long)ret_system_call;
 
 	tsk->state = TASK_RUNNING;
+	insert_task_queue(tsk);
 
-	return 0;
+	return 1;
 }
 
 /*
@@ -220,18 +255,29 @@ int kernel_thread(unsigned long (* fn)(unsigned long), unsigned long arg, unsign
 
 void __switch_to(struct task_struct *prev,struct task_struct *next)
 {
+	unsigned int color = 0;
 	// 获取next进程的内核层栈基地址
-	init_tss[0].rsp0 = next->thread->rsp0;
+	init_tss[SMP_cpu_id()].rsp0 = next->thread->rsp0;
 	// 将上述地址设置到TSS结构体对应的成员变量中
-	//set_tss64(init_tss[0].rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);	// 保存FS与GS段寄存器
+	//set_tss64(TSS64_Table,init_tss[0].rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
 	__asm__ __volatile__("movq	%%fs,	%0 \n\t":"=a"(prev->thread->fs));
 	__asm__ __volatile__("movq	%%gs,	%0 \n\t":"=a"(prev->thread->gs));
 	// 将next进程保护的FS与GS段寄存器值还原
 	__asm__ __volatile__("movq	%0,	%%fs \n\t"::"a"(next->thread->fs));
 	__asm__ __volatile__("movq	%0,	%%gs \n\t"::"a"(next->thread->gs));
 
-	color_printk(WHITE,BLACK,"prev->thread->rsp0:%#018lx\n",prev->thread->rsp0);
-	color_printk(WHITE,BLACK,"next->thread->rsp0:%#018lx\n",next->thread->rsp0);
+	wrmsr(0x175,next->thread->rsp0);
+
+	if(SMP_cpu_id() == 0)
+		color = WHITE;
+	else
+		color = YELLOW;
+
+	color_printk(color,BLACK,"prev->thread->rsp0:%#018lx\t",prev->thread->rsp0);
+	color_printk(color,BLACK,"prev->thread->rsp :%#018lx\n",prev->thread->rsp);
+	color_printk(color,BLACK,"next->thread->rsp0:%#018lx\t",next->thread->rsp0);
+	color_printk(color,BLACK,"next->thread->rsp :%#018lx\n",next->thread->rsp);
+	color_printk(color,BLACK,"CPUID:%#018lx\n",SMP_cpu_id());
 }
 
 /*
@@ -241,9 +287,9 @@ void __switch_to(struct task_struct *prev,struct task_struct *next)
 
 void task_init()
 {
-	struct task_struct *p = NULL;
+	struct task_struct *tmp = NULL;
 
-	init_mm.pgd = (pml4t_t *)Get_gdt();
+	init_mm.pgd = (pml4t_t *)Global_CR3;
 
 	init_mm.start_code = memory_management_struct.start_code;
 	init_mm.end_code = memory_management_struct.end_code;
@@ -264,8 +310,7 @@ void task_init()
 	wrmsr(0x176,(unsigned long)system_call);
 
 //	init_thread,init_tss
-	//set_tss64(init_thread.rsp0, init_tss[0].rsp1, init_tss[0].rsp2, init_tss[0].ist1, init_tss[0].ist2, init_tss[0].ist3, init_tss[0].ist4, init_tss[0].ist5, init_tss[0].ist6, init_tss[0].ist7);
-	init_tss[0].rsp0 = init_thread.rsp0;
+	init_tss[SMP_cpu_id()].rsp0 = init_thread.rsp0;
 
 	list_init(&init_task_union.task.list);
 	// 创建第二个进程，名为init
@@ -273,8 +318,8 @@ void task_init()
 	// init切换成运行态
 	init_task_union.task.state = TASK_RUNNING;
 	// 获取init内核线程的进程控制结构体
-	p = container_of(list_next(&current->list),struct task_struct,list);
-	// 切换进程
-	switch_to(current,p);
+	//tmp = container_of(list_next(&task_schedule.task_queue.list),struct task_struct,list);
+
+	//switch_to(current,tmp);
 }
 
