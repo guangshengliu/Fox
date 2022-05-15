@@ -191,8 +191,6 @@ int_msg:
 ENTRY(_stack_start)
 	.quad	init_task_union + 32768
 
-
-
 //=======	init page
 .align 8
 

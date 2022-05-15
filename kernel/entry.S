@@ -30,29 +30,31 @@ TSK_STATE	=	0x00
 TSK_FLAGS	=	0x08
 TSK_PREEMPT	=	0x10
 TSK_SIGNAL	=	0x18
+TSK_PROCESSOR = 0x20
+
 
 RESTORE_ALL:
-	popq	%r15;		
-	popq	%r14;		
-	popq	%r13;		
-	popq	%r12;		
-	popq	%r11;		
-	popq	%r10;		
-	popq	%r9;		
-	popq	%r8;		
-	popq	%rbx;		
-	popq	%rcx;		
-	popq	%rdx;		
-	popq	%rsi;		
-	popq	%rdi;		
-	popq	%rbp;		
-	popq	%rax;		
-	movq	%rax,	%ds;	
-	popq	%rax;		
-	movq	%rax,	%es;	
-	popq	%rax;		
-	addq	$0x10,	%rsp;	
-	iretq;
+	popq	%r15
+	popq	%r14
+	popq	%r13
+	popq	%r12
+	popq	%r11
+	popq	%r10
+	popq	%r9
+	popq	%r8
+	popq	%rbx
+	popq	%rcx
+	popq	%rdx
+	popq	%rsi
+	popq	%rdi
+	popq	%rbp
+	popq	%rax
+	movq	%rax,	%ds
+	popq	%rax
+	movq	%rax,	%es
+	popq	%rax
+	addq	$0x10,	%rsp
+	iretq
 
 #define GET_CURRENT(reg)	\
 	movq	$-32768,reg;	\
@@ -61,9 +63,14 @@ RESTORE_ALL:
 ret_from_exception:
 	
 ENTRY(ret_from_intr)
+	GET_CURRENT(%rbx)
+    movq    TSK_PROCESSOR(%rbx),  %rax      ////get cpu_id from current task_struct
 	movq	$-1,	%rcx
-	testq	softirq_status(%rip),	%rcx	////check softirq
+	leaq    softirq_status(%rip), %rbx      ////get softirq_status[cpu_id]
+	testq   (%rbx, %rax, 8),      %rcx      ////check softirq */
 	jnz	softirq_handler
+
+ret_with_reschedule:
 	GET_CURRENT(%rbx)
 	movq	TSK_PREEMPT(%rbx),	%rcx		////check preempt
 	cmpq	$0,	%rcx
@@ -75,18 +82,12 @@ ENTRY(ret_from_intr)
 
 softirq_handler:
 	callq	do_softirq
-	GET_CURRENT(%rbx)
-	movq	TSK_PREEMPT(%rbx),	%rcx		////check preempt
-	cmpq	$0,	%rcx
-	jne		RESTORE_ALL
-	movq	TSK_FLAGS(%rbx),	%rcx		////try schedule
-	testq	$2,	%rcx
-	jnz	reschedule
-	jmp	RESTORE_ALL		
+	jmp ret_with_reschedule	
 
 reschedule:
-	callq	schedule						////do schedule
+	callq	schedule				////do schedule
 	jmp	RESTORE_ALL
+
 
 ENTRY(system_call)
 	sti
@@ -209,7 +210,7 @@ ENTRY(debug)
 ENTRY(nmi)
 	pushq	%rax
 	cld;			
-	pushq	%rax;	
+	pushq	%rax
 	
 	pushq	%rax
 	movq	%es,	%rax
@@ -218,24 +219,24 @@ ENTRY(nmi)
 	pushq	%rax
 	xorq	%rax,	%rax
 	
-	pushq	%rbp;		
-	pushq	%rdi;		
-	pushq	%rsi;		
-	pushq	%rdx;		
-	pushq	%rcx;		
-	pushq	%rbx;		
-	pushq	%r8;		
-	pushq	%r9;		
-	pushq	%r10;		
-	pushq	%r11;		
-	pushq	%r12;		
-	pushq	%r13;		
-	pushq	%r14;		
-	pushq	%r15;
-	
-	movq	$0x10,	%rdx;	
-	movq	%rdx,	%ds;	
-	movq	%rdx,	%es;
+	pushq	%rbp
+	pushq	%rdi
+	pushq	%rsi
+	pushq	%rdx
+	pushq	%rcx
+	pushq	%rbx
+	pushq	%r8
+	pushq	%r9
+	pushq	%r10
+	pushq	%r11
+	pushq	%r12
+	pushq	%r13
+	pushq	%r14
+	pushq	%r15
+
+	movq	$0x10,	%rdx
+	movq	%rdx,	%ds
+	movq	%rdx,	%es
 	
 	movq	$0,	%rsi
 	movq	%rsp,	%rdi

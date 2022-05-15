@@ -184,8 +184,8 @@ void Start_Kernel(void)
 	HPET_init();
 
 	color_printk(RED,BLACK,"task init \n");
+	task_init();
 	sti();
-	//task_init();
 
 	while(1)
 	{

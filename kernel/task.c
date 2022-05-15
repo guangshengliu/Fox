@@ -104,7 +104,7 @@ unsigned long do_execve(struct pt_regs * regs)
 		current->addr_limit = 0xffff800000000000;
 
 	memcpy(user_level_function,(void *)0x800000,1024);
-
+	
 	return 1;
 }
 
@@ -140,12 +140,13 @@ unsigned long do_fork(struct pt_regs * regs, unsigned long clone_flags, unsigned
 	struct task_struct *tsk = NULL;
 	struct thread_struct *thd = NULL;
 	struct Page *p = NULL;
+	
 	color_printk(WHITE,BLACK,"alloc_pages,bitmap:%#018lx\n",*memory_management_struct.bits_map);
-	// 分配一页物理内存
+
 	p = alloc_pages(ZONE_NORMAL,1,PG_PTable_Maped | PG_Kernel);
 
 	color_printk(WHITE,BLACK,"alloc_pages,bitmap:%#018lx\n",*memory_management_struct.bits_map);
-	// 初始化task_struct
+
 	tsk = (struct task_struct *)Phy_To_Virt(p->PHY_address);
 	color_printk(WHITE,BLACK,"struct task_struct address:%#018lx\n",(unsigned long)tsk);
 
@@ -287,8 +288,6 @@ void __switch_to(struct task_struct *prev,struct task_struct *next)
 
 void task_init()
 {
-	struct task_struct *tmp = NULL;
-
 	init_mm.pgd = (pml4t_t *)Global_CR3;
 
 	init_mm.start_code = memory_management_struct.start_code;
@@ -315,8 +314,10 @@ void task_init()
 	list_init(&init_task_union.task.list);
 	// 创建第二个进程，名为init
 	kernel_thread(init,10,CLONE_FS | CLONE_FILES | CLONE_SIGNAL);
+	init_task_union.task.preempt_count = 0;
 	// init切换成运行态
 	init_task_union.task.state = TASK_RUNNING;
+	init_task_union.task.cpu_id = 0;
 	// 获取init内核线程的进程控制结构体
 	//tmp = container_of(list_next(&task_schedule.task_queue.list),struct task_struct,list);
 

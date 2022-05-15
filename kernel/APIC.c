@@ -395,7 +395,7 @@ void do_IRQ(struct pt_regs * regs,unsigned long nr)	//regs:rsp,nr
 	
 	case 0x80:
 	
-		color_printk(RED,BLACK,"SMP IPI:%d,CPU:%d\n",nr,SMP_cpu_id());
+		//color_printk(RED,BLACK,"SMP IPI:%d,CPU:%d\n",nr,SMP_cpu_id());
 		Local_APIC_edge_level_ack(nr);
 		{
 			irq_desc_T * irq = &SMP_IPI_desc[nr - 200];

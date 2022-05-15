@@ -67,7 +67,7 @@ void Start_SMP()
 {
 	unsigned int x,y;
 
-	color_printk(RED,YELLOW,"APU starting......\n");
+	//color_printk(RED,YELLOW,"APU starting......\n");
 
 	//enable xAPIC & x2APIC
 	__asm__ __volatile__(	"movq 	$0x1b,	%%rcx	\n\t"
@@ -81,8 +81,8 @@ void Start_SMP()
 				:
 				:"memory");
 	
-	if(x&0xc00)
-		color_printk(RED,YELLOW,"xAPIC & x2APIC enabled\n");
+	//if(x&0xc00)
+		//color_printk(RED,YELLOW,"xAPIC & x2APIC enabled\n");
 
 	//enable SVR[8] SVR[12]
 	__asm__ __volatile__(	"movq 	$0x80f,	%%rcx	\n\t"
@@ -96,10 +96,10 @@ void Start_SMP()
 				:
 				:"memory");
 
-	if(x&0x100)
-		color_printk(RED,YELLOW,"SVR[8] enabled\n");
-	if(x&0x1000)
-		color_printk(RED,YELLOW,"SVR[12] enabled\n");
+	//if(x&0x100)
+		//color_printk(RED,YELLOW,"SVR[8] enabled\n");
+	//if(x&0x1000)
+		//color_printk(RED,YELLOW,"SVR[12] enabled\n");
 
 	//get local APIC ID
 	__asm__ __volatile__(	"movq $0x802,	%%rcx	\n\t"
@@ -108,7 +108,7 @@ void Start_SMP()
 				:
 				:"memory");
 	
-	color_printk(RED,YELLOW,"x2APIC ID:%#010x\t",x);
+	//color_printk(RED,YELLOW,"x2APIC ID:%#010x\t",x);
 
 	current->state = TASK_RUNNING;
 	current->flags = PF_KTHREAD;
@@ -118,7 +118,7 @@ void Start_SMP()
 	current->addr_limit = 0xffff800000000000;
 	current->priority = 2;
 	current->vrun_time = 0;
-
+	//color_printk(RED,YELLOW,"CPU ID:%#010x\t",SMP_cpu_id());
 
 	current->thread = (struct thread_struct *)(current + 1);
 	memset(current->thread,0,sizeof(struct thread_struct));
@@ -135,8 +135,8 @@ void Start_SMP()
 
 	sti();
 
-	if(SMP_cpu_id() == 3)
-		task_init();
+	//if(SMP_cpu_id() == 3)
+		//task_init();
 
 	while(1)
 		hlt();

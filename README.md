@@ -1,4 +1,4 @@
-# System Run Method
+# How to run it ?
 
 1. A USB flash disk supporting the installation system (with a space size of more than 100 MB)
 2. Copy the files in the UEFI directory to the root directory of the USB flash disk
@@ -12,3 +12,9 @@
 3. An interrupt processing unit has been added to implement interrupt processing based on APIC. Previous versions of interrupt functionality, based on 8259A PIC, were typical interrupt controller chips in the era of single-core processors. In the era of multi-core processors, APIC can respond faster to interrupt requests and significantly improve the interrupt processing capacity of processors.
 4. New keyboard driver to print the input letters in the output window.
 5. Multi-core processors under the new SMP system architecture include multi-core boot initialization, multi-core exception handling, multi-core processor locking, and multi-core interrupt handling.
+
+# Version 1.0.1
+
+1. Add timer function, which can generate interrupt regularly.
+2. The scheduler uses a CFS scheduling algorithm to schedule tasks within the system. Detect whether a task need scheduled when a timer interrupts.
+3. Add  interrupt descriptor tables  for AP processors so that BSP processors and AP processors run tasks simultaneously.

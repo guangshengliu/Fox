@@ -100,7 +100,7 @@ void HPET_init()
 
 	register_irq(34, &entry , &HPET_handler, NULL, &HPET_int_controller, "HPET");
 	
-	color_printk(RED,BLACK,"HPET - GCAP_ID:<%#018lx>\n",*(unsigned long *)HPET_addr);
+	//color_printk(RED,BLACK,"HPET - GCAP_ID:<%#018lx>\n",*(unsigned long *)HPET_addr);
 
 	*(unsigned long *)(HPET_addr + 0x10) = 3;
 	io_mfence();
@@ -118,5 +118,5 @@ void HPET_init()
 	*(unsigned long *)(HPET_addr + 0xf0) = 0;
 	io_mfence();
 	
-	color_printk(RED,BLACK,"year:%#010x,month:%#010x,day:%#010x,hour:%#010x,mintue:%#010x,second:%#010x\n",time.year,time.month,time.day,time.hour,time.minute,time.second);
+	//color_printk(RED,BLACK,"year:%#010x,month:%#010x,day:%#010x,hour:%#010x,mintue:%#010x,second:%#010x\n",time.year,time.month,time.day,time.hour,time.minute,time.second);
 }
